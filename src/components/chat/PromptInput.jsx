@@ -4,9 +4,9 @@ import { useGemini } from '../../context/GeminiContext';
 import { Plus, Sliders, ChevronDown, Mic, ArrowUp } from 'lucide-react';
 
 const MODELS = [
-  { id: 'gemini-2.0-flash', speed: 'Fast',     full: 'Gemini 2.0 Flash' },
-  { id: 'gemini-1.5-pro',   speed: 'Pro',      full: 'Gemini 1.5 Pro'   },
-  { id: 'gemini-1.5-flash', speed: 'Balanced', full: 'Gemini 1.5 Flash'  },
+  { id: 'gemini-3-flash-preview', shortName: 'Gemini 3',         full: 'Gemini 3 Flash (Preview)' },
+  { id: 'gemini-2.5-pro',         shortName: 'Gemini 2.5 Pro',   full: 'Gemini 2.5 Pro'   },
+  { id: 'gemini-2.5-flash',       shortName: 'Gemini 2.5 Flash', full: 'Gemini 2.5 Flash'  },
 ];
 
 const dropdownVariants = {
@@ -116,7 +116,7 @@ export default function PromptInput({ centered = false }) {
                 whileHover={{ backgroundColor: 'rgba(255,255,255,0.08)', color: '#e3e3e3' }}
                 className="flex items-center gap-[5px] px-[13px] py-1.5 rounded-full border-[1.5px] border-[#3a3a3a] bg-transparent text-[#bdc1c6] text-[13.5px] font-inherit cursor-pointer transition-colors duration-150"
               >
-                {currentModel.speed}
+                {currentModel.shortName}
                 <motion.div animate={{ rotate: modelOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
                   <ChevronDown size={13} />
                 </motion.div>

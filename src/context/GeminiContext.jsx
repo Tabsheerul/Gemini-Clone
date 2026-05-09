@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback } from 'react';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GeminiContext
@@ -7,64 +8,22 @@ import { createContext, useContext, useState, useCallback } from 'react';
 //   • chatSessions  – array of past chats shown in the sidebar
 //   • activeChat    – the currently open chat (id + messages)
 //   • isThinking    – true while the AI "response" is loading
-//   • sendMessage   – stub that will call the real Gemini API later
-//
-// HOW TO WIRE THE REAL API LATER:
-//   1. Create a .env file:  VITE_GEMINI_API_KEY=your_key_here
-//   2. Inside sendMessage(), replace the mock timeout with:
-//
-//      const res = await fetch(
-//        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${import.meta.env.VITE_GEMINI_API_KEY}`,
-//        {
-//          method: 'POST',
-//          headers: { 'Content-Type': 'application/json' },
-//          body: JSON.stringify({
-//            contents: activeChat.messages.map(m => ({
-//              role: m.role === 'user' ? 'user' : 'model',
-//              parts: [{ text: m.text }],
-//            })),
-//          }),
-//        }
-//      );
-//      const data = await res.json();
-//      const text = data.candidates[0].content.parts[0].text;
-//
+//   • sendMessage   – calls the real Gemini API
 // ─────────────────────────────────────────────────────────────────────────────
 
 const GeminiContext = createContext(null);
 
-// Some canned mock replies to cycle through so the UI feels alive
-const MOCK_REPLIES = [
-  "I'm a mock response for now! Wire up the **Gemini API** by adding your key to `.env` as `VITE_GEMINI_API_KEY` and replacing the stub in `GeminiContext.jsx`.",
-  "Great question! Here's a quick breakdown:\n\n1. **Step one** – Set up your environment\n2. **Step two** – Call the API\n3. **Step three** – Profit 🎉\n\nLet me know if you'd like more details.",
-  "Sure! Here's a simple Python snippet:\n\n```python\nimport google.generativeai as genai\n\ngenai.configure(api_key='YOUR_KEY')\nmodel = genai.GenerativeModel('gemini-1.5-pro')\nresponse = model.generate_content('Hello!')\nprint(response.text)\n```",
-  "Interesting! I can help with that. The key things to consider are:\n\n- **Context** – what information do you already have?\n- **Goal** – what outcome are you aiming for?\n- **Constraints** – any limitations to keep in mind?\n\nFeel free to share more and I'll dive deeper.",
-];
-
-let mockIdx = 0;
-
 export function GeminiProvider({ children }) {
   // Each session: { id, title, messages: [{id, role, text, timestamp}] }
-  const [chatSessions, setChatSessions] = useState([
-    {
-      id: 'demo-1',
-      title: 'React project structure help',
-      messages: [],
-    },
-    {
-      id: 'demo-2',
-      title: 'Explain transformers in ML',
-      messages: [],
-    },
-  ]);
+  const [chatSessions, setChatSessions] = useState([]);
 
   // null = home/welcome state; otherwise the active session object
   const [activeChat, setActiveChat] = useState(null);
 
   const [isThinking, setIsThinking] = useState(false);
 
-  // Which Gemini model is selected (UI only for now)
-  const [selectedModel, setSelectedModel] = useState('gemini-2.0-flash');
+  // Which Gemini model is selected
+  const [selectedModel, setSelectedModel] = useState('gemini-3-flash-preview');
 
   // ── Start a brand new chat ──────────────────────────────────────────────────
   const startNewChat = useCallback(() => {
@@ -106,13 +65,32 @@ export function GeminiProvider({ children }) {
     const updatedSession = { ...currentSession, messages: updatedMessages };
     setActiveChat(updatedSession);
 
-    // ── Mock AI response (replace this block with real API call) ─────────────
+    // ── Real API call to Gemini ──────────────────────────────────────────────
     setIsThinking(true);
-    await new Promise((r) => setTimeout(r, 1400 + Math.random() * 800));
-    setIsThinking(false);
+    let aiText = '';
 
-    const aiText = MOCK_REPLIES[mockIdx % MOCK_REPLIES.length];
-    mockIdx += 1;
+    try {
+      // Initialize Gemini with the provided API key
+      const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
+      const model = genAI.getGenerativeModel({ model: selectedModel });
+
+      // Convert our local message history into Gemini's format
+      // (Exclude the current user message, we pass it to sendMessage directly)
+      const history = currentSession.messages.map((m) => ({
+        role: m.role,
+        parts: [{ text: m.text }],
+      }));
+
+      const chat = model.startChat({ history });
+      const result = await chat.sendMessage(text.trim());
+      
+      aiText = result.response.text();
+    } catch (error) {
+      console.error('Gemini API Error:', error);
+      aiText = `**Error communicating with Google Gemini API:** \n\n\`${error.message}\``;
+    }
+
+    setIsThinking(false);
 
     const aiMsg = {
       id: `msg-${Date.now()}-ai`,
@@ -129,7 +107,7 @@ export function GeminiProvider({ children }) {
     setChatSessions((prev) =>
       prev.map((s) => (s.id === finalSession.id ? finalSession : s))
     );
-  }, [activeChat]);
+  }, [activeChat, selectedModel, chatSessions]);
 
   return (
     <GeminiContext.Provider
