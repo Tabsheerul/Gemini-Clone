@@ -5,44 +5,60 @@ import ChatWindow from '../components/chat/ChatWindow';
 import PromptInput from '../components/chat/PromptInput';
 import SuggestionChips from '../components/chat/SuggestionChips';
 
-// Change this to the logged-in user's first name later
+// TODO: Replace this with the actual logged-in user's first name
 const FIRST_NAME = 'There';
+
+// ─── Gradient text classes (the colourful "Hi There!" greeting) ───────────────
+const greetingGradientClasses =
+  'text-4xl font-semibold bg-gradient-to-r from-[#4285f4] via-[#9b59b6] to-[#ea4335] ' +
+  'bg-clip-text text-transparent mb-1';
 
 /**
  * ChatPage
  *
- * HOME state  →  greeting + centered input + chips (matches screenshot)
- * CHAT state  →  scrollable messages + bottom input bar
+ * The main page of the app. It has two distinct states:
+ *
+ *   HOME state (no messages yet):
+ *     Shows a welcome greeting, a centered input bar, and suggestion chips.
+ *
+ *   CHAT state (at least one message):
+ *     Shows the scrollable message history and the input bar at the bottom.
  */
 export default function ChatPage() {
   const { activeChat } = useGemini();
+
+  // isHome is true if there are no messages yet (fresh start or new chat)
   const isHome = !activeChat || activeChat.messages.length === 0;
 
   return (
     <div className="flex flex-col h-full">
+      {/* Top navigation bar (always visible) */}
       <TopBar />
 
       {isHome ? (
-        /* ── Home / Welcome ─────────────────────────────────────────────── */
+        /* ── HOME state: greeting + input + suggestion chips ─────────────── */
         <div className="flex-1 flex flex-col items-center justify-center pb-10 overflow-y-auto">
+
+          {/* Greeting text: "Hi There! / Where should we start?" */}
           <div className="w-full max-w-[700px] px-4">
-            {/* Greeting */}
             <motion.div
               initial={{ opacity: 0, y: 22 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, ease: [0.2, 0, 0, 1] }}
               className="mb-7"
             >
-              <p className="text-4xl font-semibold bg-gradient-to-r from-[#4285f4] via-[#9b59b6] to-[#ea4335] bg-clip-text text-transparent mb-1">
+              {/* Colourful gradient "Hi There!" line */}
+              <p className={greetingGradientClasses}>
                 Hi {FIRST_NAME} !
               </p>
+              {/* Plain white sub-heading */}
               <h1 className="text-4xl font-semibold text-white m-0 leading-[1.2]">
                 Where should we start?
               </h1>
             </motion.div>
           </div>
 
-          {/* Centered prompt input */}
+          {/* Centered prompt input (the `centered` prop hides the disclaimer below it) */}
           <motion.div
             className="w-full"
             initial={{ opacity: 0, y: 14 }}
@@ -52,13 +68,16 @@ export default function ChatPage() {
             <PromptInput centered />
           </motion.div>
 
-          {/* Suggestion chips */}
+          {/* Clickable suggestion chip row */}
           <SuggestionChips />
         </div>
+
       ) : (
-        /* ── Chat state ─────────────────────────────────────────────────── */
+        /* ── CHAT state: message history + input at the bottom ──────────── */
         <>
+          {/* Scrollable list of user & AI messages */}
           <ChatWindow />
+          {/* Input bar (without the `centered` prop, it shows a disclaimer below) */}
           <PromptInput />
         </>
       )}
