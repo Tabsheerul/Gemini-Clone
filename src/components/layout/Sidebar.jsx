@@ -64,12 +64,12 @@ export default function Sidebar() {
       {/* ── Static icon rail ──────────────────────────────────────────────── */}
       <aside className="flex flex-col items-center pt-2 pb-3 gap-1 shrink-0 z-20 w-[56px] bg-[#1e1f20]">
         {/* Hamburger */}
-        <button className="icon-btn" onClick={() => setOpen(true)} title="Main menu">
+        <button className="w-10 h-10 flex items-center justify-center rounded-full text-[#bdc1c6] transition-colors duration-150 hover:bg-[rgba(255,255,255,0.08)] hover:text-[#e3e3e3] active:bg-[rgba(255,255,255,0.12)] shrink-0" onClick={() => setOpen(true)} title="Main menu">
           <Menu size={20} />
         </button>
 
         {/* New chat (pencil) */}
-        <button className="icon-btn" onClick={startNewChat} title="New chat">
+        <button className="w-10 h-10 flex items-center justify-center rounded-full text-[#bdc1c6] transition-colors duration-150 hover:bg-[rgba(255,255,255,0.08)] hover:text-[#e3e3e3] active:bg-[rgba(255,255,255,0.12)] shrink-0" onClick={startNewChat} title="New chat">
           <SquarePen size={18} />
         </button>
 
@@ -77,7 +77,7 @@ export default function Sidebar() {
         <div className="flex-1" />
 
         {/* Settings */}
-        <button className="icon-btn" title="Settings">
+        <button className="w-10 h-10 flex items-center justify-center rounded-full text-[#bdc1c6] transition-colors duration-150 hover:bg-[rgba(255,255,255,0.08)] hover:text-[#e3e3e3] active:bg-[rgba(255,255,255,0.12)] shrink-0" title="Settings">
           <Settings size={18} />
         </button>
       </aside>
@@ -108,7 +108,7 @@ export default function Sidebar() {
             >
               {/* ── Drawer header ── */}
               <div className="flex items-center gap-2 px-2 pt-2 pb-1 shrink-0">
-                <button className="icon-btn" onClick={close} title="Close menu">
+                <button className="w-10 h-10 flex items-center justify-center rounded-full text-[#bdc1c6] transition-colors duration-150 hover:bg-[rgba(255,255,255,0.08)] hover:text-[#e3e3e3] active:bg-[rgba(255,255,255,0.12)] shrink-0" onClick={close} title="Close menu">
                   <Menu size={20} />
                 </button>
                 <span className="text-[17px] font-medium text-[#e3e3e3] tracking-[0.2px]">

@@ -26,9 +26,20 @@ export default function ThinkingIndicator() {
 
       {/* Dots */}
       <div className="flex items-center gap-[5px] px-3.5 py-2.5 bg-[#282828] rounded-2xl">
-        <span className="thinking-dot" />
-        <span className="thinking-dot" />
-        <span className="thinking-dot" />
+        {[0, 0.16, 0.32].map((delay, i) => (
+          <motion.span
+            key={i}
+            className="w-[7px] h-[7px] rounded-full bg-[#8ab4f8]"
+            animate={{ y: [0, -5, 0, 0] }}
+            transition={{
+              duration: 1.4,
+              repeat: Infinity,
+              ease: "easeInOut",
+              times: [0, 0.4, 0.8, 1],
+              delay: delay,
+            }}
+          />
+        ))}
       </div>
     </motion.div>
   );

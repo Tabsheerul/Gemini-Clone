@@ -36,8 +36,8 @@ export default function TopBar() {
       {/* ── Right: Upgrade + avatar ── */}
       <div className="flex items-center gap-3">
         <motion.button
-          className="upgrade-btn"
-          whileHover={{ scale: 1.03, filter: 'brightness(1.1)' }}
+          className="flex items-center gap-[6px] px-[14px] py-[7px] rounded-full bg-gradient-to-br from-[#1a73e8] to-[#7c3aed] text-white text-[13px] font-medium whitespace-nowrap"
+          whileHover={{ scale: 1.03, filter: 'brightness(1.1)', y: -1 }}
           whileTap={{ scale: 0.97 }}
         >
           {/* Gemini sparkle star */}

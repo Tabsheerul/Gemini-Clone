@@ -33,7 +33,7 @@ export default function ChatPage() {
               transition={{ duration: 0.5, ease: [0.2, 0, 0, 1] }}
               className="mb-7"
             >
-              <p className="text-4xl font-semibold gemini-gradient mb-1">
+              <p className="text-4xl font-semibold bg-gradient-to-r from-[#4285f4] via-[#9b59b6] to-[#ea4335] bg-clip-text text-transparent mb-1">
                 Hi {FIRST_NAME} !
               </p>
               <h1 className="text-4xl font-semibold text-white m-0 leading-[1.2]">

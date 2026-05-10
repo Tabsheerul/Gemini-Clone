@@ -48,7 +48,7 @@ export default function SuggestionChips() {
           variants={chipVariants}
           whileHover={{ y: -2, transition: { type: 'spring', stiffness: 400, damping: 20 } }}
           whileTap={{ scale: 0.95 }}
-          className="chip"
+          className="flex items-center gap-[7px] px-[18px] py-[9px] rounded-full border-[1.5px] border-transparent bg-[#2828284c] text-[#c8c8c8] text-[13.5px] cursor-pointer transition-all duration-150 whitespace-nowrap hover:bg-[#333333] hover:text-[#e3e3e3]"
           onClick={() => sendMessage(chip.prompt)}
         >
           <span className="text-[15px]">{chip.icon}</span>

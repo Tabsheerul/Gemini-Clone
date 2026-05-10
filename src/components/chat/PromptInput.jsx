@@ -64,7 +64,7 @@ export default function PromptInput({ centered = false }) {
     <div className={`w-full max-w-[700px] mx-auto ${centered ? 'px-4' : 'px-4 pb-4'}`}>
       {/* ── Input box ── */}
       <motion.div
-        className="prompt-box"
+        className="bg-[#282828] rounded-[26px] border-[1.5px] border-transparent transition-colors duration-200 focus-within:border-[#444]"
         initial={false}
         animate={{ boxShadow: canSend ? '0 0 0 1.5px #444' : '0 0 0 0px transparent' }}
         transition={{ duration: 0.2 }}
@@ -88,7 +88,7 @@ export default function PromptInput({ centered = false }) {
           {/* Left: + | Tools */}
           <div className="flex items-center gap-0.5">
             <motion.button
-              className="icon-btn w-9 h-9"
+              className="w-9 h-9 flex items-center justify-center rounded-full text-[#bdc1c6] transition-colors duration-150 hover:bg-[rgba(255,255,255,0.08)] hover:text-[#e3e3e3] active:bg-[rgba(255,255,255,0.12)] shrink-0"
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               title="Add attachment"
@@ -178,7 +178,7 @@ export default function PromptInput({ centered = false }) {
                   exit={{   scale: 0.7, opacity: 0, transition: { duration: 0.1 } }}
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.88 }}
-                  className="icon-btn w-9 h-9"
+                  className="w-9 h-9 flex items-center justify-center rounded-full text-[#bdc1c6] transition-colors duration-150 hover:bg-[rgba(255,255,255,0.08)] hover:text-[#e3e3e3] active:bg-[rgba(255,255,255,0.12)] shrink-0"
                   title="Use microphone"
                 >
                   <Mic size={17} />

@@ -64,7 +64,7 @@ function AiMessage({ message }) {
 
       {/* Content */}
       <div className="flex-1 min-w-0">
-        <div className="prose-g text-[15px] leading-[1.72] text-[#e3e3e3]">
+        <div className="text-[15px] leading-[1.72] text-[#e3e3e3] [&_h1]:text-[#e3e3e3] [&_h1]:mt-[0.75rem] [&_h1]:mb-[0.4rem] [&_h1]:font-semibold [&_h2]:text-[#e3e3e3] [&_h2]:mt-[0.75rem] [&_h2]:mb-[0.4rem] [&_h2]:font-semibold [&_h3]:text-[#e3e3e3] [&_h3]:mt-[0.75rem] [&_h3]:mb-[0.4rem] [&_h3]:font-semibold [&_p]:mb-[0.7rem] [&_p]:leading-[1.75] [&_ul]:pl-[1.4rem] [&_ul]:mb-[0.7rem] [&_ol]:pl-[1.4rem] [&_ol]:mb-[0.7rem] [&_li]:mb-[0.2rem] [&_strong]:text-white [&_strong]:font-semibold [&_a]:text-[#8ab4f8] [&_a]:underline [&_code]:bg-[#1e1e1e] [&_code]:px-[6px] [&_code]:py-[2px] [&_code]:rounded-[5px] [&_code]:text-[0.87em] [&_code]:text-[#8ab4f8] [&_pre]:bg-[#1e1e1e] [&_pre]:border [&_pre]:border-[#333] [&_pre]:rounded-[10px] [&_pre]:p-4 [&_pre]:overflow-x-auto [&_pre]:my-[0.7rem] [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_pre_code]:text-[#e3e3e3] [&_blockquote]:border-l-[3px] [&_blockquote]:border-[#555] [&_blockquote]:pl-4 [&_blockquote]:text-[#aaa] [&_blockquote]:my-[0.7rem]">
           <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.text}</ReactMarkdown>
         </div>
 
