@@ -1,5 +1,6 @@
 import './index.css';
 import { GeminiProvider } from './context/GeminiContext';
+import { AuthProvider } from './context/AuthContext';
 import Sidebar from './components/layout/Sidebar';
 import ChatPage from './pages/ChatPage';
 
@@ -18,13 +19,15 @@ import ChatPage from './pages/ChatPage';
  */
 export default function App() {
   return (
-    <GeminiProvider>
-      <div className="flex h-screen bg-black text-[#e3e3e3] overflow-hidden">
-        <Sidebar />
-        <main className="flex-1 overflow-hidden">
-          <ChatPage />
-        </main>
-      </div>
-    </GeminiProvider>
+    <AuthProvider>
+      <GeminiProvider>
+        <div className="flex h-screen bg-black text-[#e3e3e3] overflow-hidden">
+          <Sidebar />
+          <main className="flex-1 overflow-hidden">
+            <ChatPage />
+          </main>
+        </div>
+      </GeminiProvider>
+    </AuthProvider>
   );
 }

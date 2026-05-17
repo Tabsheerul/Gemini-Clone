@@ -1,12 +1,10 @@
 import { motion } from 'framer-motion';
 import { useGemini } from '../context/GeminiContext';
+import { useAuth } from '../context/AuthContext';
 import TopBar from '../components/layout/TopBar';
 import ChatWindow from '../components/chat/ChatWindow';
 import PromptInput from '../components/chat/PromptInput';
 import SuggestionChips from '../components/chat/SuggestionChips';
-
-// TODO: Replace this with the actual logged-in user's first name
-const FIRST_NAME = 'There';
 
 // ─── Gradient text classes (the colourful "Hi There!" greeting) ───────────────
 const greetingGradientClasses =
@@ -26,6 +24,7 @@ const greetingGradientClasses =
  */
 export default function ChatPage() {
   const { activeChat } = useGemini();
+  const { user } = useAuth();
 
   // isHome is true if there are no messages yet (fresh start or new chat)
   const isHome = !activeChat || activeChat.messages.length === 0;
@@ -49,7 +48,7 @@ export default function ChatPage() {
             >
               {/* Colourful gradient "Hi There!" line */}
               <p className={greetingGradientClasses}>
-                Hi {FIRST_NAME} !
+                Hi {user?.firstName || 'There'}!
               </p>
               {/* Plain white sub-heading */}
               <h1 className="text-4xl font-semibold text-white m-0 leading-[1.2]">
