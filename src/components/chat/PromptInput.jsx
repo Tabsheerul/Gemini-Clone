@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGemini } from '../../context/GeminiContext';
-import { Plus, Sliders, ChevronDown, Mic, ArrowUp } from 'lucide-react';
+import { Plus, ChevronDown, Mic, ArrowUp } from 'lucide-react';
 
 // ─── Available AI Models ───────────────────────────────────────────────────────
 // Each model has a short name shown on the button and a full name shown in the dropdown.
@@ -15,9 +15,9 @@ const MODELS = [
 // These define how the model-picker dropdown animates in/out.
 // "hidden" = start state, "visible" = open state, "exit" = closing state.
 const dropdownVariants = {
-  hidden:  { opacity: 0, y: 8,  scale: 0.96 },
+  hidden:  { opacity: 0, y: -8,  scale: 0.96 },
   visible: { opacity: 1, y: 0,  scale: 1,    transition: { type: 'spring', stiffness: 380, damping: 28 } },
-  exit:    { opacity: 0, y: 6,  scale: 0.96, transition: { duration: 0.13 } },
+  exit:    { opacity: 0, y: -6,  scale: 0.96, transition: { duration: 0.13 } },
 };
 
 // ─── Shared Tailwind class strings ────────────────────────────────────────────
@@ -45,7 +45,7 @@ const modelPickerBtnClasses =
 
 // The dropdown panel that lists all models to choose from
 const dropdownPanelClasses =
-  'absolute right-0 bottom-full mb-2 w-[210px] z-20 bg-[#262626] border border-[#333] ' +
+  'absolute right-0 top-full mt-2 w-[210px] z-20 bg-[#262626] border border-[#333] ' +
   'rounded-2xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.5)]';
 
 // Inline-style for the send button pop-in animation
@@ -152,15 +152,7 @@ export default function PromptInput({ centered = false }) {
               <Plus size={18} />
             </motion.button>
 
-            {/* Tools button */}
-            <motion.button
-              whileHover={{ backgroundColor: 'rgba(255,255,255,0.08)', color: '#e3e3e3' }}
-              className="flex items-center gap-[7px] px-3.5 py-[7px] rounded-full border-none bg-transparent text-[#bdc1c6] text-[13.5px] font-inherit cursor-pointer transition-colors duration-150"
-              title="Tools"
-            >
-              <Sliders size={14} />
-              Tools
-            </motion.button>
+
           </div>
 
           {/* Right side: Model picker pill + Mic/Send button */}
