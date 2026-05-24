@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGemini } from '../../context/GeminiContext';
-import { Plus, ChevronDown, Mic, ArrowUp } from 'lucide-react';
+import { Plus, ChevronDown, Mic, ArrowUp, Image as ImageIcon, FileUp, HardDrive } from 'lucide-react';
 
 // ─── Available AI Models ───────────────────────────────────────────────────────
 // Each model has a short name shown on the button and a full name shown in the dropdown.
@@ -15,9 +15,15 @@ const MODELS = [
 // These define how the model-picker dropdown animates in/out.
 // "hidden" = start state, "visible" = open state, "exit" = closing state.
 const dropdownVariants = {
-  hidden:  { opacity: 0, y: -8,  scale: 0.96 },
-  visible: { opacity: 1, y: 0,  scale: 1,    transition: { type: 'spring', stiffness: 380, damping: 28 } },
-  exit:    { opacity: 0, y: -6,  scale: 0.96, transition: { duration: 0.13 } },
+  hidden:  { opacity: 0, y: -6, scale: 0.96 },
+  visible: { opacity: 1, y: 0,  scale: 1,    transition: { duration: 0.2, ease: [0.2, 0, 0, 1] } },
+  exit:    { opacity: 0, y: -4, scale: 0.96, transition: { duration: 0.15, ease: 'easeIn' } },
+};
+
+const attachmentVariants = {
+  hidden:  { opacity: 0, y: -6, scale: 0.96 },
+  visible: { opacity: 1, y: 0,  scale: 1,    transition: { duration: 0.2, ease: [0.2, 0, 0, 1] } },
+  exit:    { opacity: 0, y: -4, scale: 0.96, transition: { duration: 0.15, ease: 'easeIn' } },
 };
 
 // ─── Shared Tailwind class strings ────────────────────────────────────────────
@@ -46,7 +52,7 @@ const modelPickerBtnClasses =
 // The dropdown panel that lists all models to choose from
 const dropdownPanelClasses =
   'absolute right-0 top-full mt-2 w-[210px] z-20 bg-[#262626] border border-[#333] ' +
-  'rounded-2xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.5)]';
+  'rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] p-1.5 flex flex-col gap-0.5';
 
 // Inline-style for the send button pop-in animation
 const sendBtnAnimation = {
@@ -74,9 +80,10 @@ export default function PromptInput({ centered = false }) {
   // Pull what we need from the global Gemini context
   const { sendMessage, isThinking, selectedModel, setSelectedModel } = useGemini();
 
-  // Local state: the text the user is typing, and whether the model dropdown is open
+  // Local state: the text the user is typing, and whether the dropdowns are open
   const [text, setText] = useState('');
   const [modelOpen, setModelOpen] = useState(false);
+  const [attachmentOpen, setAttachmentOpen] = useState(false);
 
   // A ref lets us directly read & set the textarea's height (needed for auto-grow)
   const textareaRef = useRef(null);
@@ -139,20 +146,63 @@ export default function PromptInput({ centered = false }) {
         {/* ── Bottom toolbar ──────────────────────────────────────────────── */}
         <div className="flex items-center justify-between px-2.5 pb-3 pt-1">
 
-          {/* Left side: Attachment (+) button and Tools button */}
-          <div className="flex items-center gap-0.5">
+          {/* Left side: Attachment (+) button */}
+          <div className="flex items-center gap-0.5 relative">
 
             {/* Attachment button */}
             <motion.button
+              onClick={() => setAttachmentOpen((prev) => !prev)}
               className={iconBtnClasses}
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               title="Add attachment"
             >
-              <Plus size={18} />
+              <motion.div animate={{ rotate: attachmentOpen ? 45 : 0 }} transition={{ duration: 0.2 }}>
+                <Plus size={18} />
+              </motion.div>
             </motion.button>
 
-
+            {/* Attachment Dropdown */}
+            <AnimatePresence>
+              {attachmentOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-10"
+                    onClick={() => setAttachmentOpen(false)}
+                  />
+                  <motion.div
+                    variants={attachmentVariants}
+                    initial="hidden"
+                    animate="visible"
+                    exit="exit"
+                    style={{ transformOrigin: 'top left' }}
+                    className="absolute left-0 top-full mt-2 w-[240px] z-20 bg-[#262626] border border-[#333] rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] p-1.5 flex flex-col gap-0.5"
+                  >
+                    <button
+                      onClick={() => setAttachmentOpen(false)}
+                      className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl border-none bg-transparent text-[14px] text-[#e3e3e3] font-inherit cursor-pointer transition-colors duration-200 hover:bg-[#333]"
+                    >
+                      <FileUp size={18} className="text-[#bdc1c6]" />
+                      Upload files
+                    </button>
+                    <button
+                      onClick={() => setAttachmentOpen(false)}
+                      className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl border-none bg-transparent text-[14px] text-[#e3e3e3] font-inherit cursor-pointer transition-colors duration-200 hover:bg-[#333]"
+                    >
+                      <ImageIcon size={18} className="text-[#bdc1c6]" />
+                      Upload photos
+                    </button>
+                    <button
+                      onClick={() => setAttachmentOpen(false)}
+                      className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl border-none bg-transparent text-[14px] text-[#e3e3e3] font-inherit cursor-pointer transition-colors duration-200 hover:bg-[#333]"
+                    >
+                      <HardDrive size={18} className="text-[#bdc1c6]" />
+                      Upload from Drive
+                    </button>
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
           </div>
 
           {/* Right side: Model picker pill + Mic/Send button */}
@@ -192,10 +242,12 @@ export default function PromptInput({ centered = false }) {
                       initial="hidden"
                       animate="visible"
                       exit="exit"
+                      style={{ transformOrigin: 'top right' }}
                       className={dropdownPanelClasses}
                     >
                       {/* Header label */}
-                      <div className="px-4 pt-3 pb-2 text-[11px] uppercase tracking-[0.1em] text-[#7a7a7a] font-medium border-b border-[#333]">
+                      {/* Header label */}
+                      <div className="px-3 pt-2 pb-1.5 mb-1 text-[11px] uppercase tracking-[0.1em] text-[#7a7a7a] font-medium border-b border-[#333]">
                         Select model
                       </div>
 
@@ -203,17 +255,16 @@ export default function PromptInput({ centered = false }) {
                       {MODELS.map((model) => {
                         const isSelected = model.id === selectedModel;
                         return (
-                          <motion.button
+                          <button
                             key={model.id}
-                            whileHover={{ backgroundColor: 'rgba(255,255,255,0.06)' }}
                             onClick={() => {
                               setSelectedModel(model.id);
                               setModelOpen(false);
                             }}
                             className={`
-                              flex items-center justify-between w-full px-4 py-[11px]
+                              flex items-center justify-between w-full px-3 py-[10px] rounded-xl
                               border-none bg-transparent text-[13.5px] font-inherit cursor-pointer
-                              transition-colors duration-150
+                              transition-colors duration-200 hover:bg-[#333]
                               ${isSelected ? 'text-[#8ab4f8]' : 'text-[#bdc1c6]'}
                             `}
                           >
@@ -222,7 +273,7 @@ export default function PromptInput({ centered = false }) {
                             {isSelected && (
                               <div className="w-[7px] h-[7px] rounded-full bg-[#8ab4f8]" />
                             )}
-                          </motion.button>
+                          </button>
                         );
                       })}
                     </motion.div>
