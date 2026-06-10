@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { useGemini } from '../context/GeminiContext';
-import { useAuth } from '../context/AuthContext';
+import { useSelector } from 'react-redux';
 import TopBar from '../components/layout/TopBar';
 import ChatWindow from '../components/chat/ChatWindow';
 import PromptInput from '../components/chat/PromptInput';
@@ -24,7 +24,7 @@ const greetingGradientClasses =
  */
 export default function ChatPage() {
   const { activeChat } = useGemini();
-  const { user } = useAuth();
+  const user = useSelector((state) => state.auth.user);
 
   // isHome is true if there are no messages yet (fresh start or new chat)
   const isHome = !activeChat || activeChat.messages.length === 0;

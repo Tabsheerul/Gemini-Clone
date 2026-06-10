@@ -1,6 +1,7 @@
 import './index.css';
 import { GeminiProvider } from './context/GeminiContext';
-import { AuthProvider } from './context/AuthContext';
+import { Provider } from 'react-redux';
+import { store } from './redux/store';
 import Sidebar from './components/layout/Sidebar';
 import ChatPage from './pages/ChatPage';
 
@@ -19,7 +20,7 @@ import ChatPage from './pages/ChatPage';
  */
 export default function App() {
   return (
-    <AuthProvider>
+    <Provider store={store}>
       <GeminiProvider>
         <div className="flex h-screen bg-black text-[#e3e3e3] overflow-hidden">
           <Sidebar />
@@ -28,6 +29,6 @@ export default function App() {
           </main>
         </div>
       </GeminiProvider>
-    </AuthProvider>
+    </Provider>
   );
 }
