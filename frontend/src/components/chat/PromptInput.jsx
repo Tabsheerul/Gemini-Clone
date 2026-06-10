@@ -78,7 +78,7 @@ const sendBtnAnimation = {
  */
 export default function PromptInput({ centered = false }) {
   // Pull what we need from the global Gemini context
-  const { sendMessage, isThinking, selectedModel, setSelectedModel } = useGemini();
+  const { sendMessage, isThinking, selectedModel, setSelectedModel, activeChat } = useGemini();
 
   // Local state: the text the user is typing, and whether the dropdowns are open
   const [text, setText] = useState('');
@@ -111,6 +111,16 @@ export default function PromptInput({ centered = false }) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault(); // Prevent newline being added
       handleSend();
+    } else if (e.key === 'ArrowUp' && text === '') {
+      if (activeChat && activeChat.messages) {
+        for (let i = activeChat.messages.length - 1; i >= 0; i--) {
+          if (activeChat.messages[i].role === 'user') {
+            setText(activeChat.messages[i].text);
+            e.preventDefault();
+            break;
+          }
+        }
+      }
     }
   };
 

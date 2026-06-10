@@ -87,7 +87,16 @@ export function GeminiProvider({ children }) {
       aiText = result.response.text();
     } catch (error) {
       console.error('Gemini API Error:', error);
-      aiText = `**Error communicating with Google Gemini API:** \n\n\`${error.message}\``;
+      
+      const errorMessage = error?.message || '';
+      
+      if (errorMessage.includes('503') || errorMessage.includes('high demand')) {
+        aiText = "**Model Overloaded:** The AI is currently experiencing high demand. Please wait a few moments and try again. ⏳";
+      } else if (errorMessage.includes('API key not valid') || errorMessage.includes('API_KEY_INVALID')) {
+        aiText = "**Configuration Error:** Your API key appears to be invalid. Please check your settings.";
+      } else {
+        aiText = `**Oops! Something went wrong:** \n\n\`${errorMessage}\`\n\nPlease try again later.`;
+      }
     }
 
     setIsThinking(false);
