@@ -1,7 +1,10 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGemini } from '../../context/GeminiContext';
-import { Menu, SquarePen, Settings, MessageSquare, X, Sparkles } from 'lucide-react';
+import { Menu, SquarePen, Settings, MessageSquare, X, Sparkles, LogOut, LogIn } from 'lucide-react';
+import { useDispatch, useSelector } from 'react-redux';
+import { logoutUser } from '../../redux/authSlice';
+import { useNavigate } from 'react-router-dom';
 
 // ─── Tailwind class strings ───────────────────────────────────────────────────
 // Defined here so the JSX stays clean. Each button in the sidebar uses the same
@@ -70,6 +73,9 @@ export default function Sidebar() {
   // chatSessions: array of past chats; activeChat: the currently open chat
   // openChat: switch to a specific chat by ID; startNewChat: create a new one
   const { chatSessions, activeChat, openChat, startNewChat } = useGemini();
+  const dispatch = useDispatch();
+  const user = useSelector((state) => state.auth.user);
+  const navigate = useNavigate();
 
   // Controls whether the slide-in drawer is open or closed
   const [open, setOpen] = useState(false);
@@ -106,6 +112,17 @@ export default function Sidebar() {
         <button className={iconBtnClasses} title="Settings">
           <Settings size={18} />
         </button>
+
+        {/* Login/Logout button */}
+        {user ? (
+          <button className={iconBtnClasses} title="Logout" onClick={() => dispatch(logoutUser())}>
+            <LogOut size={18} />
+          </button>
+        ) : (
+          <button className={iconBtnClasses} title="Login" onClick={() => navigate('/login')}>
+            <LogIn size={18} />
+          </button>
+        )}
       </aside>
 
       {/* ── Animated drawer + backdrop ──────────────────────────────────────── */}
@@ -174,39 +191,62 @@ export default function Sidebar() {
                 initial="hidden"
                 animate="visible"
               >
-                {chatSessions.map((session) => {
-                  // Highlight the session that's currently open
-                  const isActive = activeChat?.id === session.id;
-                  return (
-                    <motion.button
-                      key={session.id}
-                      variants={listItemVariants}
-                      whileHover={{ x: 3 }} // slight nudge to the right on hover
-                      onClick={() => { openChat(session.id); close(); }}
-                      className={`
-                        flex items-center gap-2.5 w-full px-3 py-2 rounded-[10px] border-none
-                        text-[13.5px] cursor-pointer text-left mb-0.5 transition-colors
-                        ${isActive
-                          ? 'bg-[#8ab4f8]/10 text-[#a8c7fa]'   // active: blue tint
-                          : 'bg-transparent text-[#bdc1c6] hover:bg-white/5'}
-                      `}
+                {!user ? (
+                  <div className="px-3 py-4 text-center text-[#bdc1c6] text-[13px] bg-[#2a2a2a] rounded-xl mx-2 border border-[#333]">
+                    <p className="mb-2">Guest Mode</p>
+                    <button 
+                      onClick={() => navigate('/login')}
+                      className="text-[#8ab4f8] hover:underline"
                     >
-                      <MessageSquare size={14} className="opacity-60 shrink-0" />
-                      {/* Truncate long chat titles with ellipsis */}
-                      <span className="overflow-hidden text-ellipsis whitespace-nowrap">
-                        {session.title}
-                      </span>
-                    </motion.button>
-                  );
-                })}
+                      Log in to save chats
+                    </button>
+                  </div>
+                ) : (
+                  chatSessions.map((session) => {
+                    // Highlight the session that's currently open
+                    const isActive = activeChat?.id === session.id;
+                    return (
+                      <motion.button
+                        key={session.id}
+                        variants={listItemVariants}
+                        whileHover={{ x: 3 }} // slight nudge to the right on hover
+                        onClick={() => { openChat(session.id); close(); }}
+                        className={`
+                          flex items-center gap-2.5 w-full px-3 py-2 rounded-[10px] border-none
+                          text-[13.5px] cursor-pointer text-left mb-0.5 transition-colors
+                          ${isActive
+                            ? 'bg-[#8ab4f8]/10 text-[#a8c7fa]'   // active: blue tint
+                            : 'bg-transparent text-[#bdc1c6] hover:bg-white/5'}
+                        `}
+                      >
+                        <MessageSquare size={14} className="opacity-60 shrink-0" />
+                        {/* Truncate long chat titles with ellipsis */}
+                        <span className="overflow-hidden text-ellipsis whitespace-nowrap">
+                          {session.title}
+                        </span>
+                      </motion.button>
+                    );
+                  })
+                )}
               </motion.div>
 
-              {/* ── Drawer footer: Settings ── */}
+              {/* ── Drawer footer: Settings & Logout ── */}
               <div className="border-t border-[#2e2e2e] p-2 pb-3">
                 <button className="flex items-center gap-2.5 w-full px-3 py-2 rounded-[10px] border-none bg-transparent text-[#9aa0a6] text-[13.5px] cursor-pointer hover:bg-white/5 hover:text-[#e3e3e3] transition-colors">
                   <Settings size={16} />
                   Settings
                 </button>
+                {user ? (
+                  <button onClick={() => dispatch(logoutUser())} className="flex items-center gap-2.5 w-full px-3 py-2 rounded-[10px] border-none bg-transparent text-[#e8eaed] text-[13.5px] cursor-pointer hover:bg-white/5 hover:text-[#ff5546] transition-colors mt-1">
+                    <LogOut size={16} />
+                    Logout
+                  </button>
+                ) : (
+                  <button onClick={() => navigate('/login')} className="flex items-center gap-2.5 w-full px-3 py-2 rounded-[10px] border-none bg-transparent text-[#e8eaed] text-[13.5px] cursor-pointer hover:bg-white/5 hover:text-[#8ab4f8] transition-colors mt-1">
+                    <LogIn size={16} />
+                    Login / Sign up
+                  </button>
+                )}
               </div>
             </motion.div>
           </>

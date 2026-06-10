@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
+import { useSelector } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGemini } from '../../context/GeminiContext';
 import { Plus, ChevronDown, Mic, ArrowUp, Image as ImageIcon, FileUp, HardDrive } from 'lucide-react';
+import LoginModal from '../layout/LoginModal';
 
 // ─── Available AI Models ───────────────────────────────────────────────────────
 // Each model has a short name shown on the button and a full name shown in the dropdown.
@@ -79,11 +81,13 @@ const sendBtnAnimation = {
 export default function PromptInput({ centered = false }) {
   // Pull what we need from the global Gemini context
   const { sendMessage, isThinking, selectedModel, setSelectedModel, activeChat } = useGemini();
+  const user = useSelector((state) => state.auth.user);
 
   // Local state: the text the user is typing, and whether the dropdowns are open
   const [text, setText] = useState('');
   const [modelOpen, setModelOpen] = useState(false);
   const [attachmentOpen, setAttachmentOpen] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   // A ref lets us directly read & set the textarea's height (needed for auto-grow)
   const textareaRef = useRef(null);
@@ -161,7 +165,13 @@ export default function PromptInput({ centered = false }) {
 
             {/* Attachment button */}
             <motion.button
-              onClick={() => setAttachmentOpen((prev) => !prev)}
+              onClick={() => {
+                if (!user) {
+                  setShowLoginModal(true);
+                  return;
+                }
+                setAttachmentOpen((prev) => !prev);
+              }}
               className={iconBtnClasses}
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
@@ -332,6 +342,14 @@ export default function PromptInput({ centered = false }) {
           Gemini can make mistakes. Check important info.
         </p>
       )}
+
+      {/* Login Modal for Guest Users */}
+      <LoginModal 
+        isOpen={showLoginModal} 
+        onClose={() => setShowLoginModal(false)} 
+        title="Sign in to upload"
+        message="Please sign in or create an account to upload files and images."
+      />
     </div>
   );
 }

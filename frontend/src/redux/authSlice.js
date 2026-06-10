@@ -1,33 +1,28 @@
 import { createSlice } from '@reduxjs/toolkit';
 
-// 1. Initial State: Think of this as the default values for your auth data
 const initialState = {
-  user: {
-    firstName: 'Tabsheer',
-    lastName: 'User',
-    email: 'tabsheer@example.com'
-  }
+  user: JSON.parse(localStorage.getItem('user')) || null,
+  token: localStorage.getItem('token') || null,
 };
 
-// 2. Create Slice: This creates the reducers (functions to update state) and actions
 const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
-    // Action to set or update the user
-    setUser: (state, action) => {
-      // With Redux Toolkit, we can "mutate" the state directly like this
-      state.user = action.payload;
+    setCredentials: (state, action) => {
+      state.user = action.payload.user;
+      state.token = action.payload.token;
+      localStorage.setItem('user', JSON.stringify(action.payload.user));
+      localStorage.setItem('token', action.payload.token);
     },
-    // Action to clear the user (e.g., on logout)
     logoutUser: (state) => {
       state.user = null;
+      state.token = null;
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
     }
   }
 });
 
-// 3. Export Actions: We export these so our components can use them via useDispatch()
-export const { setUser, logoutUser } = authSlice.actions;
-
-// 4. Export Reducer: The store needs this to know how to handle the state
+export const { setCredentials, logoutUser } = authSlice.actions;
 export default authSlice.reducer;

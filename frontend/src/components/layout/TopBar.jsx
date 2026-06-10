@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import { useGemini } from '../../context/GeminiContext';
+import { useSelector, useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
+import { logoutUser } from '../../redux/authSlice';
 import { ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -31,6 +34,18 @@ const dropdownVariants = {
 export default function TopBar() {
   const { selectedModel, setSelectedModel } = useGemini();
   const [modelOpen, setModelOpen] = useState(false); // controls the dropdown visibility
+  const [profileOpen, setProfileOpen] = useState(false);
+  const user = useSelector((state) => state.auth.user);
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+
+  const handleProfileClick = () => {
+    if (!user) {
+      navigate('/login');
+    } else {
+      setProfileOpen((prev) => !prev);
+    }
+  };
 
   return (
     <header className="flex items-center justify-between shrink-0 px-4 py-2 bg-black pr-1">
@@ -56,20 +71,58 @@ export default function TopBar() {
           Upgrade to Google AI Plus
         </motion.button>
 
-        {/* User avatar — gradient circle with a simple user silhouette icon */}
-        <motion.button
-          whileHover={{ scale: 1.08 }}
-          whileTap={{ scale: 0.94 }}
-          title="Google Account"
-          className="w-8 h-8 rounded-full border-2 border-[#444] flex items-center justify-center cursor-pointer shrink-0"
-          style={{ background: 'linear-gradient(135deg, #4285f4, #9c59d1)' }}
-        >
-          {/* Head + shoulders silhouette */}
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
-            <circle cx="12" cy="8" r="4"/>
-            <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" fill="white"/>
-          </svg>
-        </motion.button>
+        {/* User avatar and dropdown container */}
+        <div className="relative">
+          <motion.button
+            onClick={handleProfileClick}
+            whileHover={{ scale: 1.08 }}
+            whileTap={{ scale: 0.94 }}
+            title={user ? `Logged in as ${user.username}` : "Sign in"}
+            className="w-8 h-8 rounded-full border-2 border-[#444] flex items-center justify-center cursor-pointer shrink-0"
+            style={{ background: user ? 'linear-gradient(135deg, #1a73e8, #7c3aed)' : '#333' }}
+          >
+            {/* Head + shoulders silhouette */}
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+              <circle cx="12" cy="8" r="4"/>
+              <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" fill="white"/>
+            </svg>
+          </motion.button>
+
+          {/* Profile Dropdown */}
+          <AnimatePresence>
+            {profileOpen && user && (
+              <>
+                <div
+                  className="fixed inset-0 z-10"
+                  onClick={() => setProfileOpen(false)}
+                />
+                <motion.div
+                  variants={dropdownVariants}
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
+                  style={{ transformOrigin: 'top right' }}
+                  className="absolute right-0 top-full mt-2 w-[240px] z-20 bg-[#262626] border border-[#333] rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] p-2 flex flex-col"
+                >
+                  <div className="px-3 py-2 border-b border-[#333] mb-1">
+                    <p className="text-[14px] text-[#e3e3e3] font-medium truncate">{user.username}</p>
+                    <p className="text-[12px] text-[#9aa0a6] truncate">{user.email}</p>
+                  </div>
+                  
+                  <button
+                    onClick={() => {
+                      dispatch(logoutUser());
+                      setProfileOpen(false);
+                    }}
+                    className="flex items-center justify-start w-full px-3 py-2.5 rounded-xl border-none bg-transparent text-[13.5px] text-[#ff5546] font-medium cursor-pointer transition-colors duration-200 hover:bg-[#333]"
+                  >
+                    Sign out
+                  </button>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
     </header>
   );
