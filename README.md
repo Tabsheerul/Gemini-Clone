@@ -72,8 +72,12 @@ The frontend will be available at `http://localhost:5173`.
 
 ## Features Implemented
 - Dynamic, auto-expanding prompt input.
-- Chat Session management (Sidebar history).
+- Chat Session management (Sidebar history) with persistent MySQL database storage.
+- Real-time chat synchronization across the React frontend and Spring Boot backend.
+- Professional Three-Tier Backend Architecture (Controller, Service, Repository).
+- Smooth typewriter text-revealing animation using Framer Motion for AI responses.
+- Intelligent auto-scroll tracking that seamlessly follows the typing animation.
+- Graceful API rate limit handling (429 Quota Exceeded).
 - AI Model selection dropdown.
-- Complete backend setup with Spring Data JPA and Entities (`User`, `ChatSession`, `Message`).
-- Secure JWT-based Authentication (Signup & Login).
+- Secure JWT-based Authentication (Signup & Login) with Spring Security CORS configurations.
 - Automatic database schema creation via Hibernate.
