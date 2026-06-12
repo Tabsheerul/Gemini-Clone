@@ -14,7 +14,18 @@ export default function ChatWindow() {
   const bottomRef = useRef(null);
 
   useEffect(() => {
+    // Scroll initially or when messages change
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+
+    // Listen for custom continuous scrolling events from the animation loop
+    const handleScroll = () => {
+      // Use 'auto' instead of 'smooth' here so it updates instantly without lag 
+      // while the animation frame fires 60 times a second
+      bottomRef.current?.scrollIntoView({ behavior: 'auto' });
+    };
+
+    window.addEventListener('chat-scroll', handleScroll);
+    return () => window.removeEventListener('chat-scroll', handleScroll);
   }, [activeChat?.messages, isThinking]);
 
   const messages = activeChat?.messages ?? [];

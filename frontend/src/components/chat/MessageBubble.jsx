@@ -1,8 +1,8 @@
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Copy, ThumbsUp, ThumbsDown, RotateCcw } from 'lucide-react';
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence, animate } from 'framer-motion';
 
 // ─── Tailwind class strings ───────────────────────────────────────────────────
 // Extracted here so they are easy to find and change without hunting through JSX.
@@ -88,8 +88,32 @@ function UserMessage({ message }) {
 // ─── AI Message ───────────────────────────────────────────────────────────────
 // Left-aligned with avatar, renders Markdown, and shows action buttons on hover.
 function AiMessage({ message }) {
-  const [copied, setCopied] = useState(false);       // True briefly after copying text
-  const [showActions, setShowActions] = useState(false); // True when user hovers this message
+  const [copied, setCopied] = useState(false);
+  const [showActions, setShowActions] = useState(false);
+  const [displayedText, setDisplayedText] = useState("");
+
+  useEffect(() => {
+    // Only animate newly generated messages (less than 5 seconds old)
+    const isNew = (Date.now() - new Date(message.timestamp).getTime()) < 5000;
+    
+    if (!isNew) {
+      setDisplayedText(message.text);
+      return;
+    }
+
+    // Use Framer Motion's animate function to create a smooth typewriter effect
+    const controls = animate(0, message.text.length, {
+      type: "tween",
+      duration: Math.min(message.text.length * 0.04, 15), // Smooth, deliberate typing (~40ms per char), max 15s
+      ease: "linear",
+      onUpdate: (latest) => {
+        setDisplayedText(message.text.substring(0, Math.round(latest)));
+        window.dispatchEvent(new Event('chat-scroll'));
+      }
+    });
+
+    return () => controls.stop();
+  }, [message.text, message.timestamp]);
 
   // Copy the AI's message text to the clipboard, then show a ✓ for 2 seconds
   const handleCopy = () => {
@@ -127,9 +151,8 @@ function AiMessage({ message }) {
 
       {/* Message content area */}
       <div className="flex-1 min-w-0">
-        {/* Markdown renderer — applies styles to AI-generated headings, code, links, etc. */}
         <div className={markdownClasses}>
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.text}</ReactMarkdown>
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{displayedText}</ReactMarkdown>
         </div>
 
         {/* Action buttons — fade in when the user hovers this message */}
