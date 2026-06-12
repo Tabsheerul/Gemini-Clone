@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { setCredentials } from '../redux/authSlice';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { X } from 'lucide-react';
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -62,12 +63,20 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="flex h-screen w-full items-center justify-center bg-black text-[#e3e3e3] p-4 font-sans">
+    <div className="flex h-screen w-full items-center justify-center bg-black text-[#e3e3e3] p-4 font-sans relative">
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md bg-[#1a1a1a] p-8 rounded-2xl border border-[#333] shadow-2xl"
+        className="relative w-full max-w-md bg-[#1a1a1a] p-8 rounded-2xl border border-[#333] shadow-2xl"
       >
+        <button 
+          onClick={() => navigate('/')}
+          className="absolute top-4 right-4 text-[#bdc1c6] hover:text-white transition-colors"
+          title="Close"
+        >
+          <X size={20} />
+        </button>
+
         <div className="flex justify-center mb-6">
            <h1 className="text-3xl font-bold bg-gradient-to-r from-[#4b90ff] to-[#ff5546] text-transparent bg-clip-text">
               Gemini
@@ -83,8 +92,8 @@ export default function AuthPage() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
+        <form onSubmit={handleSubmit}>
+          <div className="mb-4">
             <label className="block text-sm font-medium text-[#bdc1c6] mb-1">Username</label>
             <input 
               type="text" 
@@ -97,22 +106,30 @@ export default function AuthPage() {
             />
           </div>
 
-          {!isLogin && (
-            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
-              <label className="block text-sm font-medium text-[#bdc1c6] mb-1">Email</label>
-              <input 
-                type="email" 
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                required={!isLogin}
-                className="w-full bg-[#282828] border border-[#444] rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#8ab4f8] transition-colors"
-                placeholder="Enter your email"
-              />
-            </motion.div>
-          )}
+          <AnimatePresence initial={false}>
+            {!isLogin && (
+              <motion.div 
+                initial={{ opacity: 0, height: 0, marginBottom: 0 }} 
+                animate={{ opacity: 1, height: 'auto', marginBottom: 16 }}
+                exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                transition={{ duration: 0.2, ease: "easeInOut" }}
+                className="overflow-hidden"
+              >
+                <label className="block text-sm font-medium text-[#bdc1c6] mb-1">Email</label>
+                <input 
+                  type="email" 
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  required={!isLogin}
+                  className="w-full bg-[#282828] border border-[#444] rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#8ab4f8] transition-colors"
+                  placeholder="Enter your email"
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-          <div>
+          <div className="mb-4">
             <label className="block text-sm font-medium text-[#bdc1c6] mb-1">Password</label>
             <input 
               type="password" 

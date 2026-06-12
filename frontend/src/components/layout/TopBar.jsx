@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useGemini } from '../../context/GeminiContext';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { logoutUser } from '../../redux/authSlice';
-import { ChevronDown } from 'lucide-react';
+import { logoutUser, updateAvatar } from '../../redux/authSlice';
+import { ChevronDown, Camera, Edit2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import EditProfileModal from './EditProfileModal';
 
 // ─── Tailwind class strings ───────────────────────────────────────────────────
 
@@ -35,9 +36,11 @@ export default function TopBar() {
   const { selectedModel, setSelectedModel } = useGemini();
   const [modelOpen, setModelOpen] = useState(false); // controls the dropdown visibility
   const [profileOpen, setProfileOpen] = useState(false);
+  const [editProfileOpen, setEditProfileOpen] = useState(false);
   const user = useSelector((state) => state.auth.user);
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const fileInputRef = useRef(null);
 
   const handleProfileClick = () => {
     if (!user) {
@@ -47,16 +50,27 @@ export default function TopBar() {
     }
   };
 
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        dispatch(updateAvatar(reader.result));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   return (
-    <header className="flex items-center justify-between shrink-0 px-4 py-2 bg-black pr-1">
+    <header className="flex items-center justify-between shrink-0 bg-black pr-1">
 
       {/* ── Left: "Gemini" text logo ── */}
-      <span className="text-lg font-medium text-[#e3e3e3] pl-1 tracking-wide">
+      <span className="text-lg font-medium text-[#e3e3e3] tracking-wide px-4 py-2">
         Gemini
       </span>
 
       {/* ── Right: Upgrade button + User avatar ── */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 px-3 py-3">
 
         {/* Gradient "Upgrade" button — lifts slightly on hover */}
         <motion.button
@@ -78,14 +92,23 @@ export default function TopBar() {
             whileHover={{ scale: 1.08 }}
             whileTap={{ scale: 0.94 }}
             title={user ? `Logged in as ${user.username}` : "Sign in"}
-            className="w-8 h-8 rounded-full border-2 border-[#444] flex items-center justify-center cursor-pointer shrink-0"
-            style={{ background: user ? 'linear-gradient(135deg, #1a73e8, #7c3aed)' : '#333' }}
+            className="w-8 h-8 rounded-full border-2 border-[#444] flex items-center justify-center cursor-pointer shrink-0 overflow-hidden"
+            style={{ background: user && !user.avatar ? 'linear-gradient(135deg, #1a73e8, #7c3aed)' : '#333' }}
           >
-            {/* Head + shoulders silhouette */}
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
-              <circle cx="12" cy="8" r="4"/>
-              <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" fill="white"/>
-            </svg>
+            {user ? (
+              user.avatar ? (
+                <img src={user.avatar} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-white font-medium text-sm">
+                  {user.username.charAt(0).toUpperCase()}
+                </span>
+              )
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+                <circle cx="12" cy="8" r="4"/>
+                <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" fill="white"/>
+              </svg>
+            )}
           </motion.button>
 
           {/* Profile Dropdown */}
@@ -109,6 +132,36 @@ export default function TopBar() {
                     <p className="text-[12px] text-[#9aa0a6] truncate">{user.email}</p>
                   </div>
                   
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    ref={fileInputRef} 
+                    onChange={handleFileChange} 
+                    className="hidden" 
+                  />
+                  
+                  <button
+                    onClick={() => {
+                      setEditProfileOpen(true);
+                      setProfileOpen(false);
+                    }}
+                    className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-xl border-none bg-transparent text-[13.5px] text-[#e3e3e3] font-medium cursor-pointer transition-colors duration-200 hover:bg-[#333]"
+                  >
+                    <Edit2 size={16} className="text-[#bdc1c6]" />
+                    Edit profile
+                  </button>
+                  
+                  <button
+                    onClick={() => {
+                      fileInputRef.current?.click();
+                      setProfileOpen(false);
+                    }}
+                    className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-xl border-none bg-transparent text-[13.5px] text-[#e3e3e3] font-medium cursor-pointer transition-colors duration-200 hover:bg-[#333]"
+                  >
+                    <Camera size={16} className="text-[#bdc1c6]" />
+                    Change picture
+                  </button>
+
                   <button
                     onClick={() => {
                       dispatch(logoutUser());
@@ -124,6 +177,11 @@ export default function TopBar() {
           </AnimatePresence>
         </div>
       </div>
+      
+      <EditProfileModal 
+        isOpen={editProfileOpen} 
+        onClose={() => setEditProfileOpen(false)} 
+      />
     </header>
   );
 }
