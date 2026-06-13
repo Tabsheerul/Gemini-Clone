@@ -48,7 +48,7 @@ export default function ChatPage() {
             >
               {/* Colourful gradient "Hi There!" line */}
               <p className={greetingGradientClasses}>
-                Hi {user?.firstName || 'There'}!
+                Hi {user?.username || 'There'}!
               </p>
               {/* Plain white sub-heading */}
               <h1 className="text-4xl font-semibold text-white m-0 leading-[1.2]">

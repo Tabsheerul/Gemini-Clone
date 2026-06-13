@@ -94,7 +94,9 @@ export default function AuthPage() {
 
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
-            <label className="block text-sm font-medium text-[#bdc1c6] mb-1">Username</label>
+            <label className="block text-sm font-medium text-[#bdc1c6] mb-1">
+              {isLogin ? 'Username or Email' : 'Username'}
+            </label>
             <input 
               type="text" 
               name="username"
@@ -102,7 +104,7 @@ export default function AuthPage() {
               onChange={handleChange}
               required
               className="w-full bg-[#282828] border border-[#444] rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#8ab4f8] transition-colors"
-              placeholder="Enter your username"
+              placeholder={isLogin ? "Enter your username or email" : "Enter your username"}
             />
           </div>
 

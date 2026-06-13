@@ -5,6 +5,7 @@ import { Menu, SquarePen, Settings, MessageSquare, X, Sparkles, LogOut, LogIn } 
 import { useDispatch, useSelector } from 'react-redux';
 import { logoutUser } from '../../redux/authSlice';
 import { useNavigate } from 'react-router-dom';
+import LogoutModal from './LogoutModal';
 
 // ─── Tailwind class strings ───────────────────────────────────────────────────
 // Defined here so the JSX stays clean. Each button in the sidebar uses the same
@@ -79,6 +80,7 @@ export default function Sidebar() {
 
   // Controls whether the slide-in drawer is open or closed
   const [open, setOpen] = useState(false);
+  const [logoutModalOpen, setLogoutModalOpen] = useState(false);
 
   const close = () => setOpen(false);
 
@@ -115,7 +117,7 @@ export default function Sidebar() {
 
         {/* Login/Logout button */}
         {user ? (
-          <button className={iconBtnClasses} title="Logout" onClick={() => dispatch(logoutUser())}>
+          <button className={iconBtnClasses} title="Logout" onClick={() => setLogoutModalOpen(true)}>
             <LogOut size={18} />
           </button>
         ) : (
@@ -237,7 +239,7 @@ export default function Sidebar() {
                   Settings
                 </button>
                 {user ? (
-                  <button onClick={() => dispatch(logoutUser())} className="flex items-center gap-2.5 w-full px-3 py-2 rounded-[10px] border-none bg-transparent text-[#e8eaed] text-[13.5px] cursor-pointer hover:bg-white/5 hover:text-[#ff5546] transition-colors mt-1">
+                  <button onClick={() => { setLogoutModalOpen(true); close(); }} className="flex items-center gap-2.5 w-full px-3 py-2 rounded-[10px] border-none bg-transparent text-[#e8eaed] text-[13.5px] cursor-pointer hover:bg-white/5 hover:text-[#ff5546] transition-colors mt-1">
                     <LogOut size={16} />
                     Logout
                   </button>
@@ -252,6 +254,7 @@ export default function Sidebar() {
           </>
         )}
       </AnimatePresence>
+      <LogoutModal isOpen={logoutModalOpen} onClose={() => setLogoutModalOpen(false)} onConfirm={() => dispatch(logoutUser())} />
     </>
   );
 }

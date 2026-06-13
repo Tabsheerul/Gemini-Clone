@@ -6,6 +6,7 @@ import { logoutUser, updateAvatar } from '../../redux/authSlice';
 import { ChevronDown, Camera, Edit2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import EditProfileModal from './EditProfileModal';
+import LogoutModal from './LogoutModal';
 
 // ─── Tailwind class strings ───────────────────────────────────────────────────
 
@@ -37,6 +38,7 @@ export default function TopBar() {
   const [modelOpen, setModelOpen] = useState(false); // controls the dropdown visibility
   const [profileOpen, setProfileOpen] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
+  const [logoutModalOpen, setLogoutModalOpen] = useState(false);
   const user = useSelector((state) => state.auth.user);
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -164,7 +166,7 @@ export default function TopBar() {
 
                   <button
                     onClick={() => {
-                      dispatch(logoutUser());
+                      setLogoutModalOpen(true);
                       setProfileOpen(false);
                     }}
                     className="flex items-center justify-start w-full px-3 py-2.5 rounded-xl border-none bg-transparent text-[13.5px] text-[#ff5546] font-medium cursor-pointer transition-colors duration-200 hover:bg-[#333]"
@@ -182,6 +184,7 @@ export default function TopBar() {
         isOpen={editProfileOpen} 
         onClose={() => setEditProfileOpen(false)} 
       />
+      <LogoutModal isOpen={logoutModalOpen} onClose={() => setLogoutModalOpen(false)} onConfirm={() => dispatch(logoutUser())} />
     </header>
   );
 }
