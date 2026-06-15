@@ -18,6 +18,9 @@ public class Message {
     @Column(columnDefinition = "TEXT", nullable = false)
     private String text;
 
+    @Column(columnDefinition = "LONGTEXT")
+    private String imageBase64;
+
     private LocalDateTime timestamp = LocalDateTime.now();
 
     

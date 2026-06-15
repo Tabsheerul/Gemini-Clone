@@ -102,7 +102,7 @@ public class ChatService {
     /**
      * Add a new Message (from the user or the AI model) to an existing ChatSession.
      */
-    public Message addMessage(Long chatId, String role, String text) {
+    public Message addMessage(Long chatId, String role, String text, String imageBase64) {
         // 1. Find the chat in the database
         ChatSession chatSession = chatSessionRepository.findById(chatId)
                 .orElseThrow(() -> new RuntimeException("Error: Chat not found."));
@@ -117,6 +117,7 @@ public class ChatService {
         Message message = new Message();
         message.setRole(role); // "user" or "model"
         message.setText(text);
+        message.setImageBase64(imageBase64);
         message.setChatSession(chatSession);
         
         return messageRepository.save(message);

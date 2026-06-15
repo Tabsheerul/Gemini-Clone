@@ -71,6 +71,17 @@ export default function MessageBubble({ message }) {
 // ─── User Message ─────────────────────────────────────────────────────────────
 // Simple right-aligned text bubble, slides in from the right on appearance.
 function UserMessage({ message }) {
+  let isImage = false;
+  let base64Url = null;
+  let fileName = "Document";
+
+  if (message.imageBase64) {
+    const parts = message.imageBase64.split('|');
+    base64Url = parts[0];
+    fileName = parts[1] || "Attachment";
+    isImage = base64Url.startsWith('data:image/');
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10, x: 10 }}
@@ -78,8 +89,28 @@ function UserMessage({ message }) {
       transition={{ type: 'spring', stiffness: 300, damping: 28 }}
       className="flex justify-end px-6 py-1.5"
     >
-      <div className={userBubbleClasses}>
-        {message.text}
+      <div className="flex flex-col items-end gap-1">
+        {base64Url && isImage && (
+          <div className="max-w-[260px] rounded-2xl overflow-hidden border border-[#444] shadow-md mb-1">
+            <img src={base64Url} alt={fileName} className="w-full h-auto object-cover block" />
+          </div>
+        )}
+        {base64Url && !isImage && (
+          <div className="flex items-center gap-2 px-3 py-2.5 max-w-[260px] rounded-2xl bg-[#2a2a2a] border border-[#444] shadow-md mb-1">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+              <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2-2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+            </svg>
+            <div className="text-[13px] text-[#e3e3e3] truncate">
+              {fileName}
+            </div>
+          </div>
+        )}
+        {message.text && (
+          <div className={userBubbleClasses}>
+            {message.text}
+          </div>
+        )}
       </div>
     </motion.div>
   );

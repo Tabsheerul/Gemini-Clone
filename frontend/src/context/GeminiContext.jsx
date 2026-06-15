@@ -92,20 +92,24 @@ export function GeminiProvider({ children }) {
   }, [chatSessions, token]);
 
   // ── Send a message ─────────────────────────────────────────────────────────
-  const sendMessage = useCallback(async (text) => {
-    if (!text.trim()) return;
+  const sendMessage = useCallback(async (text, attachment = null) => {
+    if (!text.trim() && !attachment) return;
+
+    const encodedAttachment = attachment ? `${attachment.base64}|${attachment.file.name}` : null;
 
     const userMsg = {
       id: `msg-${Date.now()}-user`,
       role: 'user',
       text: text.trim(),
+      imageBase64: encodedAttachment,
       timestamp: new Date(),
     };
 
     // If there's no active chat, create a new session
     let currentSession = activeChat;
     if (!currentSession) {
-      const title = text.trim().slice(0, 40) + (text.length > 40 ? '…' : '');
+      const titleText = text.trim() || attachment?.file.name || 'Image Query';
+      const title = titleText.slice(0, 40) + (titleText.length > 40 ? '…' : '');
       const newSession = {
         id: `chat-${Date.now()}`, // Temporary ID
         title: title,
@@ -146,7 +150,7 @@ export function GeminiProvider({ children }) {
         await fetch(`http://localhost:8080/api/chats/${currentSession.id}/messages`, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ role: 'user', text: text.trim() })
+          body: JSON.stringify({ role: 'user', text: text.trim(), imageBase64: encodedAttachment })
         });
       } catch (e) {
         console.error("Failed to save user message", e);
@@ -167,13 +171,31 @@ export function GeminiProvider({ children }) {
       const model = genAI.getGenerativeModel({ model: selectedModel });
 
       // Convert our local message history into Gemini's format
-      const history = currentSession.messages.map((m) => ({
-        role: m.role,
-        parts: [{ text: m.text }],
-      }));
+      const history = currentSession.messages.map((m) => {
+        const parts = [{ text: m.text || " " }];
+        if (m.imageBase64) {
+          const rawData = m.imageBase64.split('|')[0];
+          const match = rawData.match(/^data:([a-zA-Z0-9/+-]+);base64,/);
+          const mimeType = match ? match[1] : 'image/jpeg';
+          const data = rawData.includes('base64,') ? rawData.split('base64,')[1] : rawData;
+          parts.push({ inlineData: { data, mimeType } });
+        }
+        return { role: m.role, parts };
+      });
 
       const chat = model.startChat({ history });
-      const result = await chat.sendMessage(text.trim());
+      
+      const promptParts = [{ text: text.trim() || " " }];
+      if (attachment) {
+        promptParts.push({
+          inlineData: {
+            data: attachment.base64.split('base64,')[1],
+            mimeType: attachment.mimeType,
+          }
+        });
+      }
+
+      const result = await chat.sendMessage(promptParts);
       
       aiText = result.response.text();
     } catch (error) {

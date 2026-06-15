@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGemini } from '../../context/GeminiContext';
-import { Plus, ChevronDown, Mic, ArrowUp, Image as ImageIcon, FileUp, HardDrive } from 'lucide-react';
+import { Plus, ChevronDown, Mic, ArrowUp, Image as ImageIcon, FileUp, HardDrive, X, FileText } from 'lucide-react';
 import LoginModal from '../layout/LoginModal';
 
 // ─── Available AI Models ───────────────────────────────────────────────────────
@@ -17,15 +17,15 @@ const MODELS = [
 // These define how the model-picker dropdown animates in/out.
 // "hidden" = start state, "visible" = open state, "exit" = closing state.
 const dropdownVariants = {
-  hidden:  { opacity: 0, y: -6, scale: 0.96 },
+  hidden:  { opacity: 0, y: 6, scale: 0.96 },
   visible: { opacity: 1, y: 0,  scale: 1,    transition: { duration: 0.2, ease: [0.2, 0, 0, 1] } },
-  exit:    { opacity: 0, y: -4, scale: 0.96, transition: { duration: 0.15, ease: 'easeIn' } },
+  exit:    { opacity: 0, y: 4, scale: 0.96, transition: { duration: 0.15, ease: 'easeIn' } },
 };
 
 const attachmentVariants = {
-  hidden:  { opacity: 0, y: -6, scale: 0.96 },
+  hidden:  { opacity: 0, y: 6, scale: 0.96 },
   visible: { opacity: 1, y: 0,  scale: 1,    transition: { duration: 0.2, ease: [0.2, 0, 0, 1] } },
-  exit:    { opacity: 0, y: -4, scale: 0.96, transition: { duration: 0.15, ease: 'easeIn' } },
+  exit:    { opacity: 0, y: 4, scale: 0.96, transition: { duration: 0.15, ease: 'easeIn' } },
 };
 
 // ─── Shared Tailwind class strings ────────────────────────────────────────────
@@ -53,7 +53,7 @@ const modelPickerBtnClasses =
 
 // The dropdown panel that lists all models to choose from
 const dropdownPanelClasses =
-  'absolute right-0 top-full mt-2 w-[210px] z-20 bg-[#262626] border border-[#333] ' +
+  'absolute right-0 bottom-full mb-3 w-[210px] z-50 bg-[#262626] border border-[#333] ' +
   'rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] p-1.5 flex flex-col gap-0.5';
 
 // Inline-style for the send button pop-in animation
@@ -88,9 +88,11 @@ export default function PromptInput({ centered = false }) {
   const [modelOpen, setModelOpen] = useState(false);
   const [attachmentOpen, setAttachmentOpen] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [attachment, setAttachment] = useState(null);
 
   // A ref lets us directly read & set the textarea's height (needed for auto-grow)
   const textareaRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   // ── Auto-grow: resize the textarea height to fit its content ──────────────
   // Runs every time `text` changes. Resets to 'auto' first so it can shrink too.
@@ -104,9 +106,10 @@ export default function PromptInput({ centered = false }) {
   // ── Send the message ───────────────────────────────────────────────────────
   const handleSend = () => {
     // Don't send if text is empty or AI is still responding
-    if (!text.trim() || isThinking) return;
-    sendMessage(text.trim());
+    if ((!text.trim() && !attachment) || isThinking) return;
+    sendMessage(text.trim(), attachment);
     setText(''); // Clear the textarea after sending
+    setAttachment(null); // Clear attachment
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
   };
 
@@ -129,7 +132,7 @@ export default function PromptInput({ centered = false }) {
   };
 
   // True only when there is text AND the AI is not already responding
-  const canSend = text.trim().length > 0 && !isThinking;
+  const canSend = (text.trim().length > 0 || attachment) && !isThinking;
 
   // Find the currently selected model object; fallback to the first model
   const currentModel = MODELS.find((m) => m.id === selectedModel) || MODELS[0];
@@ -145,6 +148,56 @@ export default function PromptInput({ centered = false }) {
         animate={{ boxShadow: canSend ? '0 0 0 1.5px #444' : '0 0 0 0px transparent' }}
         transition={{ duration: 0.2 }}
       >
+        {/* Hidden file input */}
+        <input 
+          type="file" 
+          accept="image/*,application/pdf,text/plain" 
+          ref={fileInputRef}
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files[0];
+            if (file) {
+              const reader = new FileReader();
+              reader.onloadend = () => {
+                setAttachment({
+                  file,
+                  base64: reader.result,
+                  mimeType: file.type,
+                  url: URL.createObjectURL(file)
+                });
+                setAttachmentOpen(false);
+              };
+              reader.readAsDataURL(file);
+            }
+          }}
+        />
+
+        {/* Attachment preview */}
+        {attachment && (
+          <div className="px-5 pt-4 pb-0 relative">
+             <div className="relative rounded-xl overflow-hidden border border-[#444] group inline-block bg-[#1e1e1e]">
+               {attachment.mimeType.startsWith('image/') ? (
+                 <div className="w-16 h-16">
+                   <img src={attachment.url} alt="attachment" className="w-full h-full object-cover" />
+                 </div>
+               ) : (
+                 <div className="flex items-center gap-2 px-3 py-2 w-[180px] h-16">
+                   <FileText size={24} className="text-blue-400 shrink-0" />
+                   <div className="text-[13px] text-[#e3e3e3] truncate">
+                     {attachment.file.name}
+                   </div>
+                 </div>
+               )}
+               <button 
+                 onClick={() => setAttachment(null)}
+                 className="absolute top-1 right-1 bg-black/60 p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+               >
+                 <X size={12} className="text-white" />
+               </button>
+             </div>
+          </div>
+        )}
+
         {/* The text area where users type their prompt */}
         <textarea
           ref={textareaRef}
@@ -195,18 +248,24 @@ export default function PromptInput({ centered = false }) {
                     initial="hidden"
                     animate="visible"
                     exit="exit"
-                    style={{ transformOrigin: 'top left' }}
-                    className="absolute left-0 top-full mt-2 w-[240px] z-20 bg-[#262626] border border-[#333] rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] p-1.5 flex flex-col gap-0.5"
+                    style={{ transformOrigin: 'bottom left' }}
+                    className="absolute left-0 bottom-full mb-3 w-[240px] z-50 bg-[#262626] border border-[#333] rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] p-1.5 flex flex-col gap-0.5"
                   >
                     <button
-                      onClick={() => setAttachmentOpen(false)}
+                      onClick={() => {
+                        fileInputRef.current?.setAttribute('accept', 'image/*,application/pdf,text/plain');
+                        fileInputRef.current?.click();
+                      }}
                       className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl border-none bg-transparent text-[14px] text-[#e3e3e3] font-inherit cursor-pointer transition-colors duration-200 hover:bg-[#333]"
                     >
                       <FileUp size={18} className="text-[#bdc1c6]" />
                       Upload files
                     </button>
                     <button
-                      onClick={() => setAttachmentOpen(false)}
+                      onClick={() => {
+                        fileInputRef.current?.setAttribute('accept', 'image/*');
+                        fileInputRef.current?.click();
+                      }}
                       className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl border-none bg-transparent text-[14px] text-[#e3e3e3] font-inherit cursor-pointer transition-colors duration-200 hover:bg-[#333]"
                     >
                       <ImageIcon size={18} className="text-[#bdc1c6]" />
@@ -262,7 +321,7 @@ export default function PromptInput({ centered = false }) {
                       initial="hidden"
                       animate="visible"
                       exit="exit"
-                      style={{ transformOrigin: 'top right' }}
+                      style={{ transformOrigin: 'bottom right' }}
                       className={dropdownPanelClasses}
                     >
                       {/* Header label */}

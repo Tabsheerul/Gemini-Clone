@@ -64,7 +64,8 @@ public class ChatController {
         try {
             String role = payload.get("role");
             String text = payload.get("text");
-            Message newMessage = chatService.addMessage(chatId, role, text);
+            String imageBase64 = payload.get("imageBase64");
+            Message newMessage = chatService.addMessage(chatId, role, text, imageBase64);
             return ResponseEntity.ok(newMessage);
         } catch (RuntimeException e) {
             return ResponseEntity.status(403).body(e.getMessage());
