@@ -71,6 +71,8 @@ The frontend will be available at `http://localhost:5173`.
 ---
 
 ## Features Implemented
+- **Multimodal Chat Support:** Upload and process documents (PDFs, text files) alongside image processing.
+- **Advanced Chat Management:** Rename and delete chat sessions directly from the sidebar using context-aware dropdowns.
 - Dynamic, auto-expanding prompt input.
 - Chat Session management (Sidebar history) with persistent MySQL database storage.
 - Real-time chat synchronization across the React frontend and Spring Boot backend.
