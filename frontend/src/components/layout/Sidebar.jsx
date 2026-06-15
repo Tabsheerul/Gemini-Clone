@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGemini } from '../../context/GeminiContext';
-import { Menu, SquarePen, Settings, MessageSquare, X, Sparkles, LogOut, LogIn } from 'lucide-react';
+import { Menu, SquarePen, Settings, MessageSquare, X, Sparkles, LogOut, LogIn, MoreVertical, Trash2, Edit2 } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { logoutUser } from '../../redux/authSlice';
 import { useNavigate } from 'react-router-dom';
@@ -73,7 +73,7 @@ const listItemVariants = {
 export default function Sidebar() {
   // chatSessions: array of past chats; activeChat: the currently open chat
   // openChat: switch to a specific chat by ID; startNewChat: create a new one
-  const { chatSessions, activeChat, openChat, startNewChat } = useGemini();
+  const { chatSessions, activeChat, openChat, startNewChat, renameChat, deleteChat } = useGemini();
   const dispatch = useDispatch();
   const user = useSelector((state) => state.auth.user);
   const navigate = useNavigate();
@@ -81,8 +81,18 @@ export default function Sidebar() {
   // Controls whether the slide-in drawer is open or closed
   const [open, setOpen] = useState(false);
   const [logoutModalOpen, setLogoutModalOpen] = useState(false);
+  const [menuOpenForId, setMenuOpenForId] = useState(null);
+  const [editingId, setEditingId] = useState(null);
+  const [editTitle, setEditTitle] = useState('');
 
   const close = () => setOpen(false);
+
+  // Automatically hide the inline menu when clicking anywhere else
+  useEffect(() => {
+    const handleGlobalClick = () => setMenuOpenForId(null);
+    document.addEventListener('click', handleGlobalClick);
+    return () => document.removeEventListener('click', handleGlobalClick);
+  }, []);
 
   return (
     <>
@@ -207,26 +217,102 @@ export default function Sidebar() {
                   chatSessions.map((session) => {
                     // Highlight the session that's currently open
                     const isActive = activeChat?.id === session.id;
+                    const isEditing = editingId === session.id;
+                    const isMenuOpen = menuOpenForId === session.id;
+
                     return (
-                      <motion.button
+                      <motion.div
                         key={session.id}
                         variants={listItemVariants}
-                        whileHover={{ x: 3 }} // slight nudge to the right on hover
-                        onClick={() => { openChat(session.id); close(); }}
-                        className={`
-                          flex items-center gap-2.5 w-full px-3 py-2 rounded-[10px] border-none
-                          text-[13.5px] cursor-pointer text-left mb-0.5 transition-colors
-                          ${isActive
-                            ? 'bg-[#8ab4f8]/10 text-[#a8c7fa]'   // active: blue tint
-                            : 'bg-transparent text-[#bdc1c6] hover:bg-white/5'}
-                        `}
+                        whileHover={{ x: 3 }}
+                        onMouseLeave={() => setMenuOpenForId(null)}
+                        className={`relative flex items-center justify-between w-full px-2 py-1.5 rounded-[10px] mb-0.5 group transition-colors ${isActive ? 'bg-[#8ab4f8]/10' : 'hover:bg-white/5'}`}
                       >
-                        <MessageSquare size={14} className="opacity-60 shrink-0" />
-                        {/* Truncate long chat titles with ellipsis */}
-                        <span className="overflow-hidden text-ellipsis whitespace-nowrap">
-                          {session.title}
-                        </span>
-                      </motion.button>
+                        {isEditing ? (
+                          <div className="flex items-center gap-2.5 w-full px-1">
+                            <MessageSquare size={14} className="opacity-60 shrink-0 text-[#a8c7fa]" />
+                            <input
+                              type="text"
+                              value={editTitle}
+                              onChange={(e) => setEditTitle(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  if (editTitle.trim() && editTitle !== session.title) renameChat(session.id, editTitle);
+                                  setEditingId(null);
+                                }
+                              }}
+                              onBlur={() => {
+                                if (editTitle.trim() && editTitle !== session.title) renameChat(session.id, editTitle);
+                                setEditingId(null);
+                              }}
+                              autoFocus
+                              className="bg-transparent border-b border-[#8ab4f8] text-[#e3e3e3] text-[13.5px] outline-none w-full"
+                            />
+                          </div>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => { openChat(session.id); close(); }}
+                              className={`flex items-center gap-2.5 flex-1 w-full border-none bg-transparent px-1 py-0.5 text-[13.5px] cursor-pointer text-left ${isActive ? 'text-[#a8c7fa]' : 'text-[#bdc1c6]'}`}
+                            >
+                              <MessageSquare size={14} className="opacity-60 shrink-0" />
+                              <span className="overflow-hidden text-ellipsis whitespace-nowrap max-w-[150px]">
+                                {session.title}
+                              </span>
+                            </button>
+                            
+                            {/* Actions menu */}
+                            {isMenuOpen ? (
+                              <div className="flex items-center gap-0.5 shrink-0" onClick={e => e.stopPropagation()}>
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingId(session.id);
+                                    setEditTitle(session.title);
+                                    setMenuOpenForId(null);
+                                  }}
+                                  className="p-1.5 rounded-full text-[#bdc1c6] hover:text-white hover:bg-white/10 transition-colors"
+                                  title="Rename"
+                                >
+                                  <Edit2 size={14} />
+                                </button>
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if(window.confirm('Are you sure you want to delete this chat?')) {
+                                      deleteChat(session.id);
+                                    }
+                                    setMenuOpenForId(null);
+                                  }}
+                                  className="p-1.5 rounded-full text-[#bdc1c6] hover:text-[#ff5546] hover:bg-[#ff5546]/10 transition-colors"
+                                  title="Delete"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setMenuOpenForId(null);
+                                  }}
+                                  className="p-1.5 rounded-full text-[#bdc1c6] hover:text-white hover:bg-white/10 transition-colors"
+                                >
+                                  <X size={14} />
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setMenuOpenForId(session.id);
+                                }}
+                                className={`p-1.5 rounded-full text-[#bdc1c6] hover:text-white hover:bg-white/10 transition-opacity opacity-0 group-hover:opacity-100`}
+                              >
+                                <MoreVertical size={14} />
+                              </button>
+                            )}
+                          </>
+                        )}
+                      </motion.div>
                     );
                   })
                 )}

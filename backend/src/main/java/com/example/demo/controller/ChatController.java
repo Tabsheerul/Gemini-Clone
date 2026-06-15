@@ -71,4 +71,27 @@ public class ChatController {
             return ResponseEntity.status(403).body(e.getMessage());
         }
     }
+
+    // 5. Endpoint to rename a chat
+    @PutMapping("/{chatId}")
+    public ResponseEntity<?> renameChatSession(@PathVariable Long chatId, @RequestBody Map<String, String> payload) {
+        try {
+            String newTitle = payload.get("title");
+            ChatSession updatedSession = chatService.renameChatSession(chatId, newTitle);
+            return ResponseEntity.ok(updatedSession);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(403).body(e.getMessage());
+        }
+    }
+
+    // 6. Endpoint to delete a chat
+    @DeleteMapping("/{chatId}")
+    public ResponseEntity<?> deleteChatSession(@PathVariable Long chatId) {
+        try {
+            chatService.deleteChatSession(chatId);
+            return ResponseEntity.ok().build();
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(403).body(e.getMessage());
+        }
+    }
 }

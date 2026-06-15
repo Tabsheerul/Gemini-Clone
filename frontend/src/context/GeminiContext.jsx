@@ -245,6 +245,47 @@ export function GeminiProvider({ children }) {
     );
   }, [activeChat, selectedModel, chatSessions, token]);
 
+  // ── Rename a chat ──────────────────────────────────────────────────────────
+  const renameChat = useCallback(async (chatId, newTitle) => {
+    if (!token) return;
+    try {
+      const res = await fetch(`http://localhost:8080/api/chats/${chatId}`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: newTitle })
+      });
+      if (res.ok) {
+        setChatSessions((prev) =>
+          prev.map((s) => (s.id === chatId ? { ...s, title: newTitle } : s))
+        );
+        if (activeChat && activeChat.id === chatId) {
+          setActiveChat((prev) => ({ ...prev, title: newTitle }));
+        }
+      }
+    } catch (e) {
+      console.error("Failed to rename chat", e);
+    }
+  }, [token, activeChat]);
+
+  // ── Delete a chat ──────────────────────────────────────────────────────────
+  const deleteChat = useCallback(async (chatId) => {
+    if (!token) return;
+    try {
+      const res = await fetch(`http://localhost:8080/api/chats/${chatId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setChatSessions((prev) => prev.filter((s) => s.id !== chatId));
+        if (activeChat && activeChat.id === chatId) {
+          setActiveChat(null);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to delete chat", e);
+    }
+  }, [token, activeChat]);
+
   return (
     <GeminiContext.Provider
       value={{
@@ -256,6 +297,8 @@ export function GeminiProvider({ children }) {
         startNewChat,
         openChat,
         sendMessage,
+        renameChat,
+        deleteChat,
       }}
     >
       {children}

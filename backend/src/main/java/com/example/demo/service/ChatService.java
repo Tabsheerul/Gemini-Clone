@@ -122,4 +122,39 @@ public class ChatService {
         
         return messageRepository.save(message);
     }
+
+    /**
+     * Rename an existing ChatSession.
+     */
+    public ChatSession renameChatSession(Long chatId, String newTitle) {
+        ChatSession chatSession = chatSessionRepository.findById(chatId)
+                .orElseThrow(() -> new RuntimeException("Error: Chat not found."));
+        
+        User user = getCurrentUser();
+        if (!chatSession.getUser().getId().equals(user.getId())) {
+            throw new RuntimeException("Security Violation: You do not have permission to modify this chat.");
+        }
+
+        chatSession.setTitle(newTitle);
+        return chatSessionRepository.save(chatSession);
+    }
+
+    /**
+     * Delete an existing ChatSession.
+     */
+    public void deleteChatSession(Long chatId) {
+        ChatSession chatSession = chatSessionRepository.findById(chatId)
+                .orElseThrow(() -> new RuntimeException("Error: Chat not found."));
+        
+        User user = getCurrentUser();
+        if (!chatSession.getUser().getId().equals(user.getId())) {
+            throw new RuntimeException("Security Violation: You do not have permission to delete this chat.");
+        }
+
+        // Delete all associated messages first to satisfy foreign key constraints
+        List<Message> messages = messageRepository.findByChatSessionOrderByTimestampAsc(chatSession);
+        messageRepository.deleteAll(messages);
+
+        chatSessionRepository.delete(chatSession);
+    }
 }
