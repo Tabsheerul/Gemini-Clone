@@ -195,9 +195,40 @@ export function GeminiProvider({ children }) {
         });
       }
 
-      const result = await chat.sendMessage(promptParts);
+      // --- START STREAMING CHANGES ---
+      const aiMsgId = `msg-${Date.now()}-ai`;
       
-      aiText = result.response.text();
+      // 1. Add an empty AI message to the screen immediately so we have a place to put the incoming text
+      setActiveChat(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          messages: [...prev.messages, { id: aiMsgId, role: 'model', text: '', timestamp: new Date() }]
+        };
+      });
+
+      // 2. Ask Gemini for the response as a STREAM (piece by piece)
+      const result = await chat.sendMessageStream(promptParts);
+      
+      // Turn off the loading spinner because words are about to appear!
+      setIsThinking(false); 
+
+      // 3. Loop through each piece (chunk) of text as soon as Gemini sends it
+      for await (const chunk of result.stream) {
+        const chunkText = chunk.text();
+        aiText += chunkText; // Add the new piece to our total text
+        
+        // 4. Update the screen instantly with the new piece of text
+        setActiveChat(prev => {
+          if (!prev) return prev;
+          const newMessages = prev.messages.map(m => 
+            m.id === aiMsgId ? { ...m, text: aiText } : m
+          );
+          return { ...prev, messages: newMessages };
+        });
+      }
+      // --- END STREAMING CHANGES ---
+
     } catch (error) {
       console.error('Gemini API Error:', error);
       const errorMessage = error?.message || '';
@@ -211,18 +242,23 @@ export function GeminiProvider({ children }) {
       } else {
         aiText = `**Oops! Something went wrong:** \n\n\`${errorMessage}\`\n\nPlease try again later.`;
       }
+
+      // If there was an error, we manually update the screen with the error message
+      setIsThinking(false);
+      setActiveChat(prev => {
+        if (!prev) return prev;
+        // If the empty message was added before the error, update it. Otherwise, add it.
+        const hasTempMsg = prev.messages.some(m => m.role === 'model' && m.text === '');
+        if (hasTempMsg) {
+           const newMsgs = prev.messages.map(m => (m.role === 'model' && m.text === '') ? { ...m, text: aiText } : m);
+           return { ...prev, messages: newMsgs };
+        } else {
+           return { ...prev, messages: [...prev.messages, { id: `msg-${Date.now()}-ai`, role: 'model', text: aiText, timestamp: new Date() }] };
+        }
+      });
     }
 
-    setIsThinking(false);
-
-    const aiMsg = {
-      id: `msg-${Date.now()}-ai`,
-      role: 'model',
-      text: aiText,
-      timestamp: new Date(),
-    };
-
-    // Save AI message to backend
+    // 5. Save the FINAL, complete text to our Spring Boot backend database
     if (token && isRealBackendId) {
       try {
         await fetch(`http://localhost:8080/api/chats/${currentSession.id}/messages`, {
@@ -235,13 +271,18 @@ export function GeminiProvider({ children }) {
       }
     }
 
-    const finalMessages = [...updatedMessages, aiMsg];
-    const finalSession = { ...updatedSession, messages: finalMessages };
-    setActiveChat(finalSession);
-
-    // Update sidebar session title + messages
+    // 6. Update the sidebar so it has the latest messages too
     setChatSessions((prev) =>
-      prev.map((s) => (s.id === finalSession.id ? finalSession : s))
+      prev.map((s) => {
+        if (s.id === currentSession.id) {
+          return {
+            ...s,
+            // Ensure the sidebar has both the user's message and the AI's final text
+            messages: [...updatedMessages, { role: 'model', text: aiText, timestamp: new Date() }]
+          };
+        }
+        return s;
+      })
     );
   }, [activeChat, selectedModel, chatSessions, token]);
 

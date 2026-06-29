@@ -124,27 +124,13 @@ function AiMessage({ message }) {
   const [displayedText, setDisplayedText] = useState("");
 
   useEffect(() => {
-    // Only animate newly generated messages (less than 5 seconds old)
-    const isNew = (Date.now() - new Date(message.timestamp).getTime()) < 5000;
+    // With Real-Time Streaming, the text updates dynamically chunk-by-chunk.
+    // So we don't need a fake animation anymore! We just show the text exactly as it arrives.
+    setDisplayedText(message.text);
     
-    if (!isNew) {
-      setDisplayedText(message.text);
-      return;
-    }
-
-    // Use Framer Motion's animate function to create a smooth typewriter effect
-    const controls = animate(0, message.text.length, {
-      type: "tween",
-      duration: Math.min(message.text.length * 0.04, 15), // Smooth, deliberate typing (~40ms per char), max 15s
-      ease: "linear",
-      onUpdate: (latest) => {
-        setDisplayedText(message.text.substring(0, Math.round(latest)));
-        window.dispatchEvent(new Event('chat-scroll'));
-      }
-    });
-
-    return () => controls.stop();
-  }, [message.text, message.timestamp]);
+    // Auto-scroll the chat window down as new words appear
+    window.dispatchEvent(new Event('chat-scroll'));
+  }, [message.text]);
 
   // Copy the AI's message text to the clipboard, then show a ✓ for 2 seconds
   const handleCopy = () => {
