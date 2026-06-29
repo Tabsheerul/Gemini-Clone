@@ -46,10 +46,25 @@ export default function AuthPage() {
         }));
         navigate('/'); // Redirect to chat page after login
       } else {
-        // Automatically switch to login after successful signup
-        setIsLogin(true);
-        setFormData({ ...formData, password: '' });
-        setError('Signup successful! Please log in.');
+        // Automatically log in after successful signup
+        const loginRes = await fetch('http://localhost:8080/api/auth/signin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: formData.username, password: formData.password }),
+        });
+
+        const loginData = await loginRes.text();
+        
+        if (!loginRes.ok) {
+          throw new Error(loginData || 'Auto-login failed');
+        }
+
+        const parsedData = JSON.parse(loginData);
+        dispatch(setCredentials({
+          user: { id: parsedData.id, username: parsedData.username, email: parsedData.email },
+          token: parsedData.token
+        }));
+        navigate('/'); // Redirect to chat page
       }
     } catch (err) {
       setError(err.message);
