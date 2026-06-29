@@ -87,9 +87,9 @@ function UserMessage({ message }) {
       initial={{ opacity: 0, y: 10, x: 10 }}
       animate={{ opacity: 1, y: 0, x: 0 }}
       transition={{ type: 'spring', stiffness: 300, damping: 28 }}
-      className="flex justify-end px-6 py-1.5"
+      className="flex justify-end px-6 py-1.5 w-full"
     >
-      <div className="flex flex-col items-end gap-1">
+      <div className="flex flex-col items-end gap-1 w-full">
         {base64Url && isImage && (
           <div className="max-w-[260px] rounded-2xl overflow-hidden border border-[#444] shadow-md mb-1">
             <img src={base64Url} alt={fileName} className="w-full h-auto object-cover block" />
@@ -107,7 +107,7 @@ function UserMessage({ message }) {
           </div>
         )}
         {message.text && (
-          <div className={userBubbleClasses}>
+          <div className={`${userBubbleClasses} break-words whitespace-pre-wrap`}>
             {message.text}
           </div>
         )}
