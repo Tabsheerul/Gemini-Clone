@@ -71,15 +71,15 @@ The frontend will be available at `http://localhost:5173`.
 ---
 
 ## Features Implemented
+- **True Real-Time AI Streaming:** Instantaneous AI response generation using Server-Sent Events (SSE), replacing the wait-and-animate approach.
+- **Seamless Authentication:** Secure JWT-based Authentication (Signup & Login) with Spring Security CORS and automatic login upon successful registration.
 - **Multimodal Chat Support:** Upload and process documents (PDFs, text files) alongside image processing.
 - **Advanced Chat Management:** Rename and delete chat sessions directly from the sidebar using context-aware dropdowns.
-- Dynamic, auto-expanding prompt input.
+- Dynamic, auto-expanding prompt input and fluid UI layouts.
 - Chat Session management (Sidebar history) with persistent MySQL database storage.
 - Real-time chat synchronization across the React frontend and Spring Boot backend.
 - Professional Three-Tier Backend Architecture (Controller, Service, Repository).
-- Smooth typewriter text-revealing animation using Framer Motion for AI responses.
-- Intelligent auto-scroll tracking that seamlessly follows the typing animation.
+- Intelligent auto-scroll tracking that seamlessly follows the streaming AI response.
 - Graceful API rate limit handling (429 Quota Exceeded).
 - AI Model selection dropdown.
-- Secure JWT-based Authentication (Signup & Login) with Spring Security CORS configurations.
 - Automatic database schema creation via Hibernate.
