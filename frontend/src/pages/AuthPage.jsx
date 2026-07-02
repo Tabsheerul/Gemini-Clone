@@ -93,7 +93,7 @@ export default function AuthPage() {
         </button>
 
         <div className="flex justify-center mb-6">
-           <h1 className="text-3xl font-bold bg-gradient-to-r from-[#4b90ff] to-[#ff5546] text-transparent bg-clip-text">
+           <h1 className="text-3xl font-bold bg-gradient-to-r from-[#4b90ff] via-[#8ab4f8] to-[#ff5546] bg-[length:200%_auto] animate-gradient text-transparent bg-clip-text">
               Gemini
            </h1>
         </div>

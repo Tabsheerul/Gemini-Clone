@@ -27,3 +27,12 @@ button,
 button:disabled {
   cursor: not-allowed;
 }
+
+/* ── Custom Animations ── */
+@keyframes gradient-xy {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+.animate-gradient {
+  animation: gradient-xy 3s ease infinite;
+}

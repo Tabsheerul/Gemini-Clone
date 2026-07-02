@@ -143,11 +143,21 @@ export default function PromptInput({ centered = false }) {
       {/* ── Input box ─────────────────────────────────────────────────────── */}
       {/* Animates a subtle ring shadow when the user can send */}
       <motion.div
-        className={inputBoxClasses}
+        className={`${inputBoxClasses} relative overflow-hidden`}
         initial={false}
         animate={{ boxShadow: canSend ? '0 0 0 1.5px #444' : '0 0 0 0px transparent' }}
         transition={{ duration: 0.2 }}
       >
+        {/* Animated loading bar shown while Gemini is thinking */}
+        {isThinking && (
+          <motion.div 
+            className="absolute top-0 left-0 h-[2px] w-full bg-gradient-to-r from-transparent via-[#8ab4f8] to-transparent"
+            initial={{ x: '-100%' }}
+            animate={{ x: '100%' }}
+            transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+          />
+        )}
+
         {/* Hidden file input */}
         <input 
           type="file" 
