@@ -89,10 +89,12 @@ export default function PromptInput({ centered = false }) {
   const [attachmentOpen, setAttachmentOpen] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [attachment, setAttachment] = useState(null);
+  const [isRecording, setIsRecording] = useState(false);
 
   // A ref lets us directly read & set the textarea's height (needed for auto-grow)
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
+  const recognitionRef = useRef(null);
 
   // ── Auto-grow: resize the textarea height to fit its content ──────────────
   // Runs every time `text` changes. Resets to 'auto' first so it can shrink too.
@@ -131,8 +133,58 @@ export default function PromptInput({ centered = false }) {
     }
   };
 
+  // ── Handle Microphone click ────────────────────────────────────────────────
+  const handleMicClick = () => {
+    if (isRecording && recognitionRef.current) {
+      recognitionRef.current.stop();
+      return;
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Sorry, your browser doesn't support speech recognition.");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognitionRef.current = recognition;
+
+    const originalText = text;
+
+    recognition.onstart = () => setIsRecording(true);
+
+    recognition.onresult = (event) => {
+      let finalTranscript = '';
+      let interimTranscript = '';
+      for (let i = 0; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript;
+        } else {
+          interimTranscript += transcript;
+        }
+      }
+      
+      const spacing = originalText.length > 0 && !originalText.endsWith(' ') ? ' ' : '';
+      setText(originalText + spacing + finalTranscript + interimTranscript);
+    };
+
+    recognition.onerror = (event) => {
+      console.error("Speech recognition error", event.error);
+      setIsRecording(false);
+    };
+
+    recognition.onend = () => {
+      setIsRecording(false);
+    };
+
+    recognition.start();
+  };
+
   // True only when there is text AND the AI is not already responding
-  const canSend = (text.trim().length > 0 || attachment) && !isThinking;
+  const canSend = (text.trim().length > 0 || attachment) && !isThinking && !isRecording;
 
   // Find the currently selected model object; fallback to the first model
   const currentModel = MODELS.find((m) => m.id === selectedModel) || MODELS[0];
@@ -394,10 +446,17 @@ export default function PromptInput({ centered = false }) {
                   {...sendBtnAnimation}
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.88 }}
-                  className={iconBtnClasses}
-                  title="Use microphone"
+                  onClick={handleMicClick}
+                  className={`${iconBtnClasses} ${isRecording ? 'text-red-500 bg-[rgba(239,68,68,0.15)] hover:bg-[rgba(239,68,68,0.2)]' : ''}`}
+                  title={isRecording ? "Stop recording" : "Use microphone"}
                 >
-                  <Mic size={17} />
+                  {isRecording ? (
+                    <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 1.5 }}>
+                      <Mic size={17} />
+                    </motion.div>
+                  ) : (
+                    <Mic size={17} />
+                  )}
                 </motion.button>
               )}
             </AnimatePresence>
