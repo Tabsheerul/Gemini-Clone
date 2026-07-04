@@ -95,6 +95,7 @@ export default function PromptInput({ centered = false }) {
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
   const recognitionRef = useRef(null);
+  const originalTextRef = useRef('');
 
   // ── Auto-grow: resize the textarea height to fit its content ──────────────
   // Runs every time `text` changes. Resets to 'auto' first so it can shrink too.
@@ -146,29 +147,25 @@ export default function PromptInput({ centered = false }) {
       return;
     }
 
+    // Save the text that was already in the input before recording started
+    originalTextRef.current = text;
+
     const recognition = new SpeechRecognition();
-    recognition.continuous = true;
+    recognition.continuous = false; // false is more reliable across different browsers
     recognition.interimResults = true;
     recognitionRef.current = recognition;
-
-    const originalText = text;
 
     recognition.onstart = () => setIsRecording(true);
 
     recognition.onresult = (event) => {
-      let finalTranscript = '';
-      let interimTranscript = '';
+      let currentTranscript = '';
       for (let i = 0; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          finalTranscript += transcript;
-        } else {
-          interimTranscript += transcript;
-        }
+        currentTranscript += event.results[i][0].transcript;
       }
       
-      const spacing = originalText.length > 0 && !originalText.endsWith(' ') ? ' ' : '';
-      setText(originalText + spacing + finalTranscript + interimTranscript);
+      const baseText = originalTextRef.current;
+      const spacing = baseText.length > 0 && !baseText.endsWith(' ') ? ' ' : '';
+      setText(baseText + spacing + currentTranscript);
     };
 
     recognition.onerror = (event) => {
