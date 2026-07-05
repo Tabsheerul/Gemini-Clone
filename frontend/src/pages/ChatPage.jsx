@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useGemini } from '../context/GeminiContext';
 import { useSelector } from 'react-redux';
@@ -23,11 +24,25 @@ const greetingGradientClasses =
  *     Shows the scrollable message history and the input bar at the bottom.
  */
 export default function ChatPage() {
-  const { activeChat } = useGemini();
+  const { activeChat, startNewChat } = useGemini();
   const user = useSelector((state) => state.auth.user);
 
   // isHome is true if there are no messages yet (fresh start or new chat)
   const isHome = !activeChat || activeChat.messages.length === 0;
+
+  // ── Keyboard shortcut: Ctrl + Shift + O = New Chat ─────────────────────
+  // Lets power users quickly start a fresh conversation without reaching for the mouse.
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.ctrlKey && e.shiftKey && e.key === 'O') {
+        e.preventDefault();
+        startNewChat();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    // Cleanup: remove listener when ChatPage unmounts
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [startNewChat]);
 
   return (
     <div className="flex flex-col h-full">

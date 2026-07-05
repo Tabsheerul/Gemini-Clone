@@ -78,7 +78,7 @@ const DROPDOWN_PANEL =
  */
 export default function PromptInput({ centered = false }) {
   // Pull what we need from global state
-  const { sendMessage, isThinking, selectedModel, setSelectedModel, activeChat } = useGemini();
+  const { sendMessage, isThinking, stopGeneration, selectedModel, setSelectedModel, activeChat } = useGemini();
   const user = useSelector((state) => state.auth.user);
 
   // ── Local UI state ──────────────────────────────────────────────────────────
@@ -114,14 +114,17 @@ export default function PromptInput({ centered = false }) {
     },
   });
 
-  // ── Auto-grow textarea ─────────────────────────────────────────────────────
-  // Every time the text changes, recalculate the textarea height to fit its content.
-  // We reset to 'auto' first so it can also shrink when text is deleted.
+  // ── Auto-grow textarea (debounced) ────────────────────────────────────────
+  // Runs after 50ms of no typing instead of on every single keystroke.
+  // This reduces unnecessary DOM measurements when the user types fast.
   useEffect(() => {
-    const ta = textareaRef.current;
-    if (!ta) return;
-    ta.style.height = 'auto';
-    ta.style.height = Math.min(ta.scrollHeight, 200) + 'px'; // cap at 200px tall
+    const timer = setTimeout(() => {
+      const ta = textareaRef.current;
+      if (!ta) return;
+      ta.style.height = 'auto';
+      ta.style.height = Math.min(ta.scrollHeight, 200) + 'px'; // cap at 200px tall
+    }, 50);
+    return () => clearTimeout(timer); // cancel timer if text changes before 50ms
   }, [text]);
 
   // ── Send message ───────────────────────────────────────────────────────────
@@ -384,10 +387,25 @@ export default function PromptInput({ centered = false }) {
               </AnimatePresence>
             </div>
 
-            {/* ── Mic / Send button ─────────────────────────────────────── */}
-            {/* AnimatePresence with mode="wait" smoothly swaps between the two */}
+            {/* ── Mic / Send / Stop button ──────────────────────────────── */}
+            {/* AnimatePresence with mode="wait" smoothly swaps between all three */}
             <AnimatePresence mode="wait">
-              {canSend ? (
+              {isThinking ? (
+                /* Stop button — shown while the AI is generating a response.
+                   Lets the user cancel the stream mid-generation. */
+                <motion.button
+                  key="stop"
+                  {...sendButtonAnimation}
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.88 }}
+                  onClick={stopGeneration}
+                  title="Stop generating"
+                  className="w-[34px] h-[34px] rounded-full border-2 border-[#bdc1c6] text-[#bdc1c6] flex items-center justify-center cursor-pointer"
+                >
+                  {/* Filled square = the universal "stop" symbol */}
+                  <div className="w-[10px] h-[10px] rounded-[2px] bg-[#bdc1c6]" />
+                </motion.button>
+              ) : canSend ? (
                 /* Send button — white circle with an up-arrow icon */
                 <motion.button
                   key="send"

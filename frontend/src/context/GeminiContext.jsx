@@ -2,7 +2,11 @@ import { createContext, useContext, useState, useCallback, useEffect } from 'rea
 import { useSelector } from 'react-redux';
 import { DEFAULT_MODEL_ID } from '../constants/models';
 import * as api from '../services/api';
-import { streamAiResponse } from '../services/geminiService';
+import { streamAiResponse, stopGeneration } from '../services/geminiService';
+
+// Key used to store/retrieve chat sessions from the browser's localStorage.
+// Using a constant avoids typos when we read/write the same key.
+const CHATS_CACHE_KEY = 'gemini_cached_chats';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GeminiContext
@@ -43,10 +47,18 @@ export function GeminiProvider({ children }) {
   useEffect(() => {
     const loadChats = async () => {
       if (!token) {
-        // User logged out — clear sidebar and go back to the home screen
+        // User logged out — clear sidebar, cache, and go back to the home screen
         setChatSessions([]);
         setActiveChat(null);
+        localStorage.removeItem(CHATS_CACHE_KEY);
         return;
+      }
+
+      // ── Cache: show previously saved chats instantly while we fetch fresh data ──
+      // This makes the sidebar appear immediately on page reload (no blank flash).
+      const cached = localStorage.getItem(CHATS_CACHE_KEY);
+      if (cached) {
+        setChatSessions(JSON.parse(cached));
       }
 
       try {
@@ -54,6 +66,8 @@ export function GeminiProvider({ children }) {
         // Map backend entities to the minimal shape our frontend needs
         const formatted = data.map((c) => ({ id: c.id, title: c.title, messages: [] }));
         setChatSessions(formatted);
+        // Save fresh data to cache for next page load
+        localStorage.setItem(CHATS_CACHE_KEY, JSON.stringify(formatted));
       } catch (e) {
         console.error('Failed to load chats from backend:', e);
       }
@@ -216,8 +230,8 @@ export function GeminiProvider({ children }) {
     }
 
     // ── Step 6: Update the sidebar so it has both messages ──
-    setChatSessions((prev) =>
-      prev.map((s) => {
+    setChatSessions((prev) => {
+      const updated = prev.map((s) => {
         if (s.id !== currentSession.id) return s;
         return {
           ...s,
@@ -226,8 +240,14 @@ export function GeminiProvider({ children }) {
             { role: 'model', text: finalAiText, timestamp: new Date() },
           ],
         };
-      })
-    );
+      });
+      // Persist the updated sessions list so the sidebar loads instantly on refresh
+      localStorage.setItem(
+        CHATS_CACHE_KEY,
+        JSON.stringify(updated.map((s) => ({ id: s.id, title: s.title, messages: [] })))
+      );
+      return updated;
+    });
   }, [activeChat, selectedModel, chatSessions, token]);
 
   // ── Rename a chat ─────────────────────────────────────────────────────────
@@ -275,6 +295,7 @@ export function GeminiProvider({ children }) {
         startNewChat,
         openChat,
         sendMessage,
+        stopGeneration,  // exposed so PromptInput can wire up the Stop button
         renameChat,
         deleteChat,
       }}

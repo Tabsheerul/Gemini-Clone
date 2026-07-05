@@ -10,17 +10,36 @@
  *     - Switch from fetch() to axios
  *   ...we ONLY need to edit THIS file. No other file knows or cares about HTTP.
  *
- * Every function here follows the same pattern:
- *   1. Make a fetch() call to the backend
- *   2. Return the parsed JSON response on success
- *   3. Throw an error on failure (so the caller can handle it with try/catch)
+ * Enhancements in this version:
+ *   - Retry logic: failed requests are automatically retried up to 2 times
+ *     with a 1-second delay, so brief backend restarts don't break the user experience.
  */
 
 /** The root URL of our Spring Boot backend. Change this once here if it moves. */
 const BASE_URL = 'http://localhost:8080';
 
 /**
- * A small helper to build the Authorization header.
+ * How many times to retry a failed request before giving up.
+ * 2 retries = 3 total attempts.
+ */
+const MAX_RETRIES = 2;
+
+/**
+ * How long (in milliseconds) to wait between retry attempts.
+ * 1000ms = 1 second.
+ */
+const RETRY_DELAY_MS = 1000;
+
+/**
+ * A small helper to pause execution for a given number of milliseconds.
+ * Used between retry attempts so we don't hammer the server immediately.
+ *
+ * @param {number} ms - Milliseconds to wait
+ */
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * A helper to build the Authorization header.
  * Every protected endpoint needs this, so we reuse it everywhere.
  *
  * @param {string} token - The JWT token from Redux store
@@ -30,6 +49,45 @@ const authHeaders = (token) => ({
   'Content-Type': 'application/json',
 });
 
+/**
+ * Wrapper around fetch() that automatically retries on failure.
+ *
+ * Why this matters: If the backend (Spring Boot) is briefly restarting or the
+ * network hiccups for a moment, without retry the user would see an error.
+ * With retry, the request silently tries again and usually succeeds.
+ *
+ * @param {string} url     - The endpoint URL
+ * @param {object} options - fetch() options (method, headers, body, etc.)
+ * @param {number} retries - Remaining retry attempts (decrements with each call)
+ * @returns {Promise<Response>} The successful Response object
+ * @throws {Error} If all retry attempts are exhausted
+ */
+async function fetchWithRetry(url, options, retries = MAX_RETRIES) {
+  try {
+    const res = await fetch(url, options);
+
+    // Treat non-2xx HTTP responses as errors so they trigger a retry
+    if (!res.ok) {
+      // For 4xx errors (bad request, unauthorized), don't retry — the problem is
+      // with the request itself, not the server. Retrying would just fail again.
+      if (res.status >= 400 && res.status < 500) {
+        throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+      }
+      throw new Error(`HTTP ${res.status}`);
+    }
+
+    return res;
+  } catch (err) {
+    if (retries > 0) {
+      console.warn(`Request failed (${err.message}). Retrying in ${RETRY_DELAY_MS}ms... (${retries} attempts left)`);
+      await wait(RETRY_DELAY_MS);
+      return fetchWithRetry(url, options, retries - 1);
+    }
+    // No more retries — give up and let the caller handle the error
+    throw err;
+  }
+}
+
 // ─── Chat Session Endpoints ───────────────────────────────────────────────────
 
 /**
@@ -38,10 +96,9 @@ const authHeaders = (token) => ({
  * @returns {Promise<Array>} Array of chat objects from the backend
  */
 export async function fetchChats(token) {
-  const res = await fetch(`${BASE_URL}/api/chats`, {
+  const res = await fetchWithRetry(`${BASE_URL}/api/chats`, {
     headers: authHeaders(token),
   });
-  if (!res.ok) throw new Error(`Failed to fetch chats (status ${res.status})`);
   return res.json();
 }
 
@@ -52,12 +109,11 @@ export async function fetchChats(token) {
  * @returns {Promise<Object>} The newly created chat object (including its real database ID)
  */
 export async function createChat(token, title) {
-  const res = await fetch(`${BASE_URL}/api/chats`, {
+  const res = await fetchWithRetry(`${BASE_URL}/api/chats`, {
     method: 'POST',
     headers: authHeaders(token),
     body: JSON.stringify({ title }),
   });
-  if (!res.ok) throw new Error(`Failed to create chat (status ${res.status})`);
   return res.json();
 }
 
@@ -68,12 +124,11 @@ export async function createChat(token, title) {
  * @param {string} newTitle
  */
 export async function renameChat(token, chatId, newTitle) {
-  const res = await fetch(`${BASE_URL}/api/chats/${chatId}`, {
+  await fetchWithRetry(`${BASE_URL}/api/chats/${chatId}`, {
     method: 'PUT',
     headers: authHeaders(token),
     body: JSON.stringify({ title: newTitle }),
   });
-  if (!res.ok) throw new Error(`Failed to rename chat (status ${res.status})`);
 }
 
 /**
@@ -82,11 +137,10 @@ export async function renameChat(token, chatId, newTitle) {
  * @param {number} chatId
  */
 export async function deleteChat(token, chatId) {
-  const res = await fetch(`${BASE_URL}/api/chats/${chatId}`, {
+  await fetchWithRetry(`${BASE_URL}/api/chats/${chatId}`, {
     method: 'DELETE',
     headers: authHeaders(token),
   });
-  if (!res.ok) throw new Error(`Failed to delete chat (status ${res.status})`);
 }
 
 // ─── Message Endpoints ────────────────────────────────────────────────────────
@@ -99,10 +153,9 @@ export async function deleteChat(token, chatId) {
  * @returns {Promise<Array>} Array of message objects from the backend
  */
 export async function fetchMessages(token, chatId) {
-  const res = await fetch(`${BASE_URL}/api/chats/${chatId}/messages`, {
+  const res = await fetchWithRetry(`${BASE_URL}/api/chats/${chatId}/messages`, {
     headers: authHeaders(token),
   });
-  if (!res.ok) throw new Error(`Failed to fetch messages (status ${res.status})`);
   return res.json();
 }
 
@@ -115,10 +168,9 @@ export async function fetchMessages(token, chatId) {
  * @param {string | null} imageBase64 - Optional encoded image/file attachment
  */
 export async function saveMessage(token, chatId, role, text, imageBase64 = null) {
-  const res = await fetch(`${BASE_URL}/api/chats/${chatId}/messages`, {
+  await fetchWithRetry(`${BASE_URL}/api/chats/${chatId}/messages`, {
     method: 'POST',
     headers: authHeaders(token),
     body: JSON.stringify({ role, text, imageBase64 }),
   });
-  if (!res.ok) throw new Error(`Failed to save message (status ${res.status})`);
 }

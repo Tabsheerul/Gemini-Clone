@@ -5,7 +5,15 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "messages")
+@Table(
+    name = "messages",
+    indexes = {
+        // This index makes loading messages for a chat dramatically faster.
+        // Without it, MySQL scans every row in the table to find matching messages.
+        // With it, MySQL jumps directly to the right rows — O(log n) instead of O(n).
+        @Index(name = "idx_messages_chat_session_id", columnList = "chat_session_id")
+    }
+)
 @Data
 public class Message {
     @Id

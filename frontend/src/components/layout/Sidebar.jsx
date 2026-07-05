@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGemini } from '../../context/GeminiContext';
-import { Menu, SquarePen, Settings, MessageSquare, X, Sparkles, LogOut, LogIn, MoreVertical, Trash2, Edit2 } from 'lucide-react';
+import { Menu, SquarePen, Settings, MessageSquare, X, LogOut, LogIn, MoreVertical, Trash2, Edit2 } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { logoutUser } from '../../redux/authSlice';
 import { useNavigate } from 'react-router-dom';
 import LogoutModal from './LogoutModal';
+import DeleteChatModal from './DeleteChatModal';
 
 // ─── Tailwind class strings ───────────────────────────────────────────────────
 // Defined here so the JSX stays clean. Each button in the sidebar uses the same
@@ -84,6 +85,8 @@ export default function Sidebar() {
   const [menuOpenForId, setMenuOpenForId] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [editTitle, setEditTitle] = useState('');
+  // State for the styled delete confirmation modal
+  const [deletingChat, setDeletingChat] = useState(null); // holds { id, title } of chat to delete
 
   const close = () => setOpen(false);
 
@@ -341,6 +344,13 @@ export default function Sidebar() {
         )}
       </AnimatePresence>
       <LogoutModal isOpen={logoutModalOpen} onClose={() => setLogoutModalOpen(false)} onConfirm={() => dispatch(logoutUser())} />
+      {/* Styled delete confirmation modal — replaces browser window.confirm() */}
+      <DeleteChatModal
+        isOpen={!!deletingChat}
+        onClose={() => setDeletingChat(null)}
+        onConfirm={() => deleteChat(deletingChat.id)}
+        chatTitle={deletingChat?.title}
+      />
     </>
   );
 }
