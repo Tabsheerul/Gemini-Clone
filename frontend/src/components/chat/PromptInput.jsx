@@ -151,17 +151,22 @@ export default function PromptInput({ centered = false }) {
     originalTextRef.current = text;
 
     const recognition = new SpeechRecognition();
+    recognition.lang = window.navigator.language || 'en-US';
     recognition.continuous = false; // false is more reliable across different browsers
     recognition.interimResults = true;
     recognitionRef.current = recognition;
 
-    recognition.onstart = () => setIsRecording(true);
+    recognition.onstart = () => {
+      console.log("Mic started listening...");
+      setIsRecording(true);
+    };
 
     recognition.onresult = (event) => {
-      let currentTranscript = '';
-      for (let i = 0; i < event.results.length; i++) {
-        currentTranscript += event.results[i][0].transcript;
-      }
+      const currentTranscript = Array.from(event.results)
+        .map(result => result[0].transcript)
+        .join('');
+      
+      console.log("Speech heard:", currentTranscript);
       
       const baseText = originalTextRef.current;
       const spacing = baseText.length > 0 && !baseText.endsWith(' ') ? ' ' : '';
@@ -169,7 +174,14 @@ export default function PromptInput({ centered = false }) {
     };
 
     recognition.onerror = (event) => {
-      console.error("Speech recognition error", event.error);
+      console.error("Speech recognition error:", event.error);
+      if (event.error === 'no-speech') {
+        alert("No speech was detected. Please make sure your microphone is working and not muted in Windows settings.");
+      } else if (event.error === 'audio-capture') {
+        alert("No microphone was found. Please ensure a microphone is plugged in.");
+      } else if (event.error === 'not-allowed') {
+        alert("Microphone access was denied. Please allow microphone access in your browser settings.");
+      }
       setIsRecording(false);
     };
 
