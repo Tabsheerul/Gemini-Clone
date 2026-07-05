@@ -1,103 +1,124 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { useSelector } from 'react-redux';
+import { DEFAULT_MODEL_ID } from '../constants/models';
+import * as api from '../services/api';
+import { streamAiResponse } from '../services/geminiService';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GeminiContext
 //
-// This is the single source of truth for the entire app:
-//   • chatSessions  – array of past chats shown in the sidebar
-//   • activeChat    – the currently open chat (id + messages)
-//   • isThinking    – true while the AI "response" is loading
-//   • sendMessage   – calls the real Gemini API
+// This is the global "brain" of the chat app. It holds the state that many
+// different components need to share:
+//
+//   chatSessions  — the list of past chats shown in the sidebar
+//   activeChat    — the chat currently open on screen (null = home/welcome screen)
+//   isThinking    — true while we are waiting for the AI's first response chunk
+//   selectedModel — which Gemini model the user has chosen in the dropdown
+//
+// Every function here is wrapped in `useCallback` so that child components
+// that receive these functions as props don't re-render unnecessarily.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const GeminiContext = createContext(null);
 
 export function GeminiProvider({ children }) {
-  // We use Redux to watch for the token dynamically!
+  // Read the auth token from Redux so we can attach it to every API request.
+  // When the user logs in/out, this value updates and triggers a re-fetch.
   const token = useSelector((state) => state.auth.token);
 
-  // Each session: { id, title, messages: [{id, role, text, timestamp}] }
+  // Each session has the shape: { id, title, messages: [{id, role, text, timestamp}] }
   const [chatSessions, setChatSessions] = useState([]);
 
-  // null = home/welcome state; otherwise the active session object
+  // The currently open chat. null means the welcome/home screen is showing.
   const [activeChat, setActiveChat] = useState(null);
 
+  // True while the AI has not yet sent its first character (shows the loading spinner)
   const [isThinking, setIsThinking] = useState(false);
 
-  // Which Gemini model is selected
-  const [selectedModel, setSelectedModel] = useState('gemini-3-flash-preview');
+  // The model ID currently selected (e.g. 'gemini-2.5-flash')
+  const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL_ID);
 
-  // ── Load chats automatically whenever the token changes (login/logout) ──
+  // ── Load chats whenever the user logs in or out ───────────────────────────
+  // When `token` changes (login/logout), we either fetch the user's chats or clear them.
   useEffect(() => {
-    const fetchChats = async () => {
+    const loadChats = async () => {
       if (!token) {
-        // If logged out, clear the sidebar and chat
+        // User logged out — clear sidebar and go back to the home screen
         setChatSessions([]);
         setActiveChat(null);
         return;
       }
+
       try {
-        const res = await fetch('http://localhost:8080/api/chats', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          // Map backend entities to frontend format
-          const formatted = data.map(c => ({ id: c.id, title: c.title, messages: [] }));
-          setChatSessions(formatted);
-        } else {
-           console.error("Failed fetching chats, status:", res.status);
-        }
+        const data = await api.fetchChats(token);
+        // Map backend entities to the minimal shape our frontend needs
+        const formatted = data.map((c) => ({ id: c.id, title: c.title, messages: [] }));
+        setChatSessions(formatted);
       } catch (e) {
-        console.error("Failed to load chats from backend", e);
+        console.error('Failed to load chats from backend:', e);
       }
     };
-    fetchChats();
+
+    loadChats();
   }, [token]);
 
-  // ── Start a brand new chat ──────────────────────────────────────────────────
+  // ── Start a brand new chat ────────────────────────────────────────────────
+  // Called by the "New chat" button. Simply clears the active chat,
+  // which causes the home/welcome screen to appear.
   const startNewChat = useCallback(() => {
     setActiveChat(null);
   }, []);
 
-  // ── Open an existing session from the sidebar ──────────────────────────────
+  // ── Open an existing chat from the sidebar ────────────────────────────────
+  // Lazy-loads the messages the first time a chat is opened (messages array is empty).
   const openChat = useCallback(async (sessionId) => {
-    let session = chatSessions.find((s) => s.id === sessionId);
-    if (session) {
-      // If messages aren't loaded, fetch them from backend
-      if (session.messages.length === 0 && token) {
-        try {
-          const res = await fetch(`http://localhost:8080/api/chats/${sessionId}/messages`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          if (res.ok) {
-            const msgs = await res.json();
-            session.messages = msgs.map(m => ({ 
-              id: m.id, 
-              role: m.role, 
-              text: m.text, 
-              timestamp: m.timestamp 
-            }));
-            // Update state with newly loaded messages
-            setChatSessions(prev => prev.map(s => s.id === sessionId ? session : s));
-          }
-        } catch (e) {
-          console.error("Failed to load messages", e);
-        }
+    const session = chatSessions.find((s) => s.id === sessionId);
+    if (!session) return;
+
+    // Only fetch messages if they haven't been loaded yet
+    if (session.messages.length === 0 && token) {
+      try {
+        const msgs = await api.fetchMessages(token, sessionId);
+        const loadedMessages = msgs.map((m) => ({
+          id: m.id,
+          role: m.role,
+          text: m.text,
+          timestamp: m.timestamp,
+        }));
+
+        // Update the session in the sidebar list with the loaded messages
+        const updatedSession = { ...session, messages: loadedMessages };
+        setChatSessions((prev) =>
+          prev.map((s) => (s.id === sessionId ? updatedSession : s))
+        );
+        setActiveChat(updatedSession);
+        return;
+      } catch (e) {
+        console.error('Failed to load messages for chat:', e);
       }
-      setActiveChat({ ...session });
     }
+
+    setActiveChat({ ...session });
   }, [chatSessions, token]);
 
-  // ── Send a message ─────────────────────────────────────────────────────────
+  // ── Send a message ────────────────────────────────────────────────────────
+  // This is the most complex function. It:
+  //   1. Creates a new chat session if none is open
+  //   2. Adds the user's message to the screen instantly
+  //   3. Calls the Gemini AI service and streams the response
+  //   4. Saves both messages to the backend database
   const sendMessage = useCallback(async (text, attachment = null) => {
+    // Don't do anything if the message is completely empty
     if (!text.trim() && !attachment) return;
 
-    const encodedAttachment = attachment ? `${attachment.base64}|${attachment.file.name}` : null;
+    // Our image/file is stored as a single encoded string: "base64data|filename"
+    // This format lets us pass one string to the backend while keeping both pieces of info
+    const encodedAttachment = attachment
+      ? `${attachment.base64}|${attachment.file.name}`
+      : null;
 
-    const userMsg = {
+    // Build the user message object in the shape our app uses internally
+    const userMessage = {
       id: `msg-${Date.now()}-user`,
       role: 'user',
       text: text.trim(),
@@ -105,228 +126,144 @@ export function GeminiProvider({ children }) {
       timestamp: new Date(),
     };
 
-    // If there's no active chat, create a new session
+    // ── Step 1: Ensure there's an active chat session ──
     let currentSession = activeChat;
     if (!currentSession) {
+      // No chat is open — create a new one. The title is the first 40 characters
+      // of the user's message so the sidebar label is meaningful.
       const titleText = text.trim() || attachment?.file.name || 'Image Query';
       const title = titleText.slice(0, 40) + (titleText.length > 40 ? '…' : '');
-      const newSession = {
-        id: `chat-${Date.now()}`, // Temporary ID
-        title: title,
-        messages: [],
-      };
-      
-      // Save session to backend immediately
+
+      // Start with a temporary ID; we'll replace it with the real database ID below
+      const newSession = { id: `chat-${Date.now()}`, title, messages: [] };
+
       if (token) {
         try {
-          const res = await fetch('http://localhost:8080/api/chats', {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title })
-          });
-          if (res.ok) {
-            const data = await res.json();
-            newSession.id = data.id; // Switch temp ID to real backend ID!
-          } else {
-             console.error("Failed to create chat, status:", res.status);
-          }
+          const created = await api.createChat(token, title);
+          newSession.id = created.id; // Replace temporary ID with the real database ID
         } catch (e) {
-          console.error("Failed to create chat on backend", e);
+          console.error('Failed to create chat on backend:', e);
         }
       }
-      
+
       currentSession = newSession;
-      // Add to sidebar history
+      // Add the new session to the top of the sidebar list
       setChatSessions((prev) => [newSession, ...prev]);
     }
 
-    // A helper to know if we successfully got a real backend ID
-    // Our temp IDs start with "chat-". If it doesn't, it's a real DB ID!
-    const isRealBackendId = !String(currentSession.id).startsWith('chat-');
-
-    // Save User message to backend
-    if (token && isRealBackendId) {
+    // ── Step 2: Save user message to the database ──
+    // We only save if the session has a real backend ID (not a temporary "chat-xxxxx" ID)
+    const hasRealId = !String(currentSession.id).startsWith('chat-');
+    if (token && hasRealId) {
       try {
-        await fetch(`http://localhost:8080/api/chats/${currentSession.id}/messages`, {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ role: 'user', text: text.trim(), imageBase64: encodedAttachment })
-        });
+        await api.saveMessage(token, currentSession.id, 'user', text.trim(), encodedAttachment);
       } catch (e) {
-        console.error("Failed to save user message", e);
+        console.error('Failed to save user message:', e);
       }
     }
 
-    const updatedMessages = [...currentSession.messages, userMsg];
-    const updatedSession = { ...currentSession, messages: updatedMessages };
-    setActiveChat(updatedSession);
+    // ── Step 3: Update the screen with the user's message immediately ──
+    // We don't wait for the AI — the user's message appears right away
+    const messagesWithUser = [...currentSession.messages, userMessage];
+    const sessionWithUser = { ...currentSession, messages: messagesWithUser };
+    setActiveChat(sessionWithUser);
 
-    // ── Real API call to Gemini ──────────────────────────────────────────────
+    // ── Step 4: Call the Gemini AI API (streaming) ──
+    // We create a placeholder empty AI message so the chat shows it immediately
+    const aiMessageId = `msg-${Date.now()}-ai`;
+    const emptyAiMessage = { id: aiMessageId, role: 'model', text: '', timestamp: new Date() };
+
     setIsThinking(true);
-    let aiText = '';
 
-    try {
-      // Initialize Gemini with the provided API key
-      const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({ model: selectedModel });
+    // Add the empty AI message bubble to the screen while we wait for the first chunk
+    setActiveChat((prev) => {
+      if (!prev) return prev;
+      return { ...prev, messages: [...prev.messages, emptyAiMessage] };
+    });
 
-      // Convert our local message history into Gemini's format
-      const history = currentSession.messages.map((m) => {
-        const parts = [{ text: m.text || " " }];
-        if (m.imageBase64) {
-          const rawData = m.imageBase64.split('|')[0];
-          const match = rawData.match(/^data:([a-zA-Z0-9/+-]+);base64,/);
-          const mimeType = match ? match[1] : 'image/jpeg';
-          const data = rawData.includes('base64,') ? rawData.split('base64,')[1] : rawData;
-          parts.push({ inlineData: { data, mimeType } });
-        }
-        return { role: m.role, parts };
-      });
+    // Call the Gemini service. It streams chunks back and calls our onChunk function
+    // each time a new piece of text arrives.
+    const finalAiText = await streamAiResponse({
+      modelId: selectedModel,
+      history: currentSession.messages,     // history BEFORE the user's new message
+      userText: text.trim(),
+      attachment,
+      onChunk: (accumulatedText) => {
+        // Turn off the thinking spinner as soon as we have the first chunk
+        setIsThinking(false);
 
-      const chat = model.startChat({ history });
-      
-      const promptParts = [{ text: text.trim() || " " }];
-      if (attachment) {
-        promptParts.push({
-          inlineData: {
-            data: attachment.base64.split('base64,')[1],
-            mimeType: attachment.mimeType,
-          }
-        });
-      }
-
-      // --- START STREAMING CHANGES ---
-      const aiMsgId = `msg-${Date.now()}-ai`;
-      
-      // 1. Add an empty AI message to the screen immediately so we have a place to put the incoming text
-      setActiveChat(prev => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          messages: [...prev.messages, { id: aiMsgId, role: 'model', text: '', timestamp: new Date() }]
-        };
-      });
-
-      // 2. Ask Gemini for the response as a STREAM (piece by piece)
-      const result = await chat.sendMessageStream(promptParts);
-      
-      // Turn off the loading spinner because words are about to appear!
-      setIsThinking(false); 
-
-      // 3. Loop through each piece (chunk) of text as soon as Gemini sends it
-      for await (const chunk of result.stream) {
-        const chunkText = chunk.text();
-        aiText += chunkText; // Add the new piece to our total text
-        
-        // 4. Update the screen instantly with the new piece of text
-        setActiveChat(prev => {
+        // Update the AI message bubble in real-time with the latest accumulated text
+        setActiveChat((prev) => {
           if (!prev) return prev;
-          const newMessages = prev.messages.map(m => 
-            m.id === aiMsgId ? { ...m, text: aiText } : m
+          const updatedMessages = prev.messages.map((m) =>
+            m.id === aiMessageId ? { ...m, text: accumulatedText } : m
           );
-          return { ...prev, messages: newMessages };
+          return { ...prev, messages: updatedMessages };
         });
-      }
-      // --- END STREAMING CHANGES ---
+      },
+    });
 
-    } catch (error) {
-      console.error('Gemini API Error:', error);
-      const errorMessage = error?.message || '';
-      
-      if (errorMessage.includes('503') || errorMessage.includes('high demand')) {
-        aiText = "**Model Overloaded:** The AI is currently experiencing high demand. Please wait a few moments and try again. ⏳";
-      } else if (errorMessage.includes('API key not valid') || errorMessage.includes('API_KEY_INVALID')) {
-        aiText = "**Configuration Error:** Your API key appears to be invalid. Please check your settings.";
-      } else if (errorMessage.includes('429') || errorMessage.includes('Quota exceeded') || errorMessage.includes('quota')) {
-        aiText = "**Rate Limit Exceeded:** You've reached your free usage quota for the Gemini API. Please wait a moment and try again, or check your Google AI billing plan. 🛑";
-      } else {
-        aiText = `**Oops! Something went wrong:** \n\n\`${errorMessage}\`\n\nPlease try again later.`;
-      }
+    // Make sure the thinking spinner is off (in case of an error with no chunks)
+    setIsThinking(false);
 
-      // If there was an error, we manually update the screen with the error message
-      setIsThinking(false);
-      setActiveChat(prev => {
-        if (!prev) return prev;
-        // If the empty message was added before the error, update it. Otherwise, add it.
-        const hasTempMsg = prev.messages.some(m => m.role === 'model' && m.text === '');
-        if (hasTempMsg) {
-           const newMsgs = prev.messages.map(m => (m.role === 'model' && m.text === '') ? { ...m, text: aiText } : m);
-           return { ...prev, messages: newMsgs };
-        } else {
-           return { ...prev, messages: [...prev.messages, { id: `msg-${Date.now()}-ai`, role: 'model', text: aiText, timestamp: new Date() }] };
-        }
-      });
-    }
-
-    // 5. Save the FINAL, complete text to our Spring Boot backend database
-    if (token && isRealBackendId) {
+    // ── Step 5: Save the final, complete AI response to the database ──
+    if (token && hasRealId) {
       try {
-        await fetch(`http://localhost:8080/api/chats/${currentSession.id}/messages`, {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ role: 'model', text: aiText })
-        });
+        await api.saveMessage(token, currentSession.id, 'model', finalAiText);
       } catch (e) {
-        console.error("Failed to save AI message", e);
+        console.error('Failed to save AI message:', e);
       }
     }
 
-    // 6. Update the sidebar so it has the latest messages too
+    // ── Step 6: Update the sidebar so it has both messages ──
     setChatSessions((prev) =>
       prev.map((s) => {
-        if (s.id === currentSession.id) {
-          return {
-            ...s,
-            // Ensure the sidebar has both the user's message and the AI's final text
-            messages: [...updatedMessages, { role: 'model', text: aiText, timestamp: new Date() }]
-          };
-        }
-        return s;
+        if (s.id !== currentSession.id) return s;
+        return {
+          ...s,
+          messages: [
+            ...messagesWithUser,
+            { role: 'model', text: finalAiText, timestamp: new Date() },
+          ],
+        };
       })
     );
   }, [activeChat, selectedModel, chatSessions, token]);
 
-  // ── Rename a chat ──────────────────────────────────────────────────────────
+  // ── Rename a chat ─────────────────────────────────────────────────────────
   const renameChat = useCallback(async (chatId, newTitle) => {
     if (!token) return;
     try {
-      const res = await fetch(`http://localhost:8080/api/chats/${chatId}`, {
-        method: 'PUT',
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: newTitle })
-      });
-      if (res.ok) {
-        setChatSessions((prev) =>
-          prev.map((s) => (s.id === chatId ? { ...s, title: newTitle } : s))
-        );
-        if (activeChat && activeChat.id === chatId) {
-          setActiveChat((prev) => ({ ...prev, title: newTitle }));
-        }
+      await api.renameChat(token, chatId, newTitle);
+      // Update the local state so the sidebar reflects the new name instantly
+      setChatSessions((prev) =>
+        prev.map((s) => (s.id === chatId ? { ...s, title: newTitle } : s))
+      );
+      if (activeChat?.id === chatId) {
+        setActiveChat((prev) => ({ ...prev, title: newTitle }));
       }
     } catch (e) {
-      console.error("Failed to rename chat", e);
+      console.error('Failed to rename chat:', e);
     }
   }, [token, activeChat]);
 
-  // ── Delete a chat ──────────────────────────────────────────────────────────
+  // ── Delete a chat ─────────────────────────────────────────────────────────
   const deleteChat = useCallback(async (chatId) => {
     if (!token) return;
     try {
-      const res = await fetch(`http://localhost:8080/api/chats/${chatId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) {
-        setChatSessions((prev) => prev.filter((s) => s.id !== chatId));
-        if (activeChat && activeChat.id === chatId) {
-          setActiveChat(null);
-        }
+      await api.deleteChat(token, chatId);
+      // Remove the session from the sidebar
+      setChatSessions((prev) => prev.filter((s) => s.id !== chatId));
+      // If the deleted chat was open, go back to the home screen
+      if (activeChat?.id === chatId) {
+        setActiveChat(null);
       }
     } catch (e) {
-      console.error("Failed to delete chat", e);
+      console.error('Failed to delete chat:', e);
     }
   }, [token, activeChat]);
 
+  // Provide the state and functions to all children via context
   return (
     <GeminiContext.Provider
       value={{
@@ -347,7 +284,12 @@ export function GeminiProvider({ children }) {
   );
 }
 
-// Convenient hook
+/**
+ * useGemini — Convenience hook
+ *
+ * Use this anywhere instead of importing GeminiContext and calling useContext manually.
+ * Throws a helpful error if you accidentally use it outside of <GeminiProvider>.
+ */
 export function useGemini() {
   const ctx = useContext(GeminiContext);
   if (!ctx) throw new Error('useGemini must be used inside <GeminiProvider>');
